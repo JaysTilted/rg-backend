@@ -26,8 +26,13 @@ class Settings(BaseSettings):
     deepseek_api_key: str = ""
     xai_api_key: str = ""
 
-    # Slack
+    # Slack (legacy — kept for backward compat, unused if Mattermost is configured)
     slack_bot_token: str = ""
+
+    # Mattermost
+    mattermost_url: str = ""
+    mattermost_bot_token: str = ""
+    mattermost_team_name: str = ""
 
     # Giphy
     giphy_api_key: str = ""
@@ -45,14 +50,14 @@ class Settings(BaseSettings):
 
     # Resend (transactional email)
     resend_api_key: str = ""
-    resend_from_email: str = "BookMyLeads <noreply@send.bookmyleads.ai>"
+    resend_from_email: str = "Iron Automations <noreply@send.ironautomations.com>"
 
     # Auth
     api_auth_token: str = ""
 
     # Portal auth
     portal_jwt_secret: str = ""
-    frontend_url: str = "https://app.bookmyleads.ai"
+    frontend_url: str = "https://app.ironautomations.com"
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

@@ -426,7 +426,7 @@ class DeliveryService:
     ) -> None:
         """Send Slack notification for permanent delivery failure."""
         try:
-            from app.services.slack import post_slack_message
+            from app.services.mattermost import post_message as post_slack_message
             company = self.config.get("name") or self.config.get("name") or self.entity_id
             text = (
                 f":x: *SMS Delivery Failed* (after retry)\n"

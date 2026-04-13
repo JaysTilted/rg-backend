@@ -22,7 +22,7 @@ from app.workflows.outreach_resolver import resolve_outreach
 from app.workflows.missed_call_textback import process_missed_call
 from app.workflows.booking_logger import process_booking_log
 from app.auth import verify_auth
-from app.services.slack import notify_error
+from app.services.mattermost import notify_error
 from app.services.supabase_client import supabase
 from app.services.postgres_client import postgres
 from app.services.ghl_client import start_ghl_pool, stop_ghl_pool
@@ -240,7 +240,13 @@ app = FastAPI(title="Text Engine", version="0.1.0", lifespan=lifespan, dependenc
 from fastapi.middleware.cors import CORSMiddleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173", "https://app.bookmyleads.ai", "https://app.refinedgrowth.net"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "https://app.ironautomations.com",
+        "https://app.bookmyleads.ai",
+        "https://app.refinedgrowth.net",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

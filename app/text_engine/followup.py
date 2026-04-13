@@ -23,7 +23,7 @@ from app.services.ai_client import classify
 from app.text_engine.model_resolver import resolve_model, resolve_temperature
 from app.services.postgres_client import postgres
 from app.services.ghl_links import build_ghl_contact_url
-from app.services.slack import post_slack_message
+from app.services.mattermost import post_message as post_slack_message
 
 logger = logging.getLogger(__name__)
 

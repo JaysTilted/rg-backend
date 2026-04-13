@@ -40,7 +40,7 @@ from app.services.ai_client import set_ai_context, clear_ai_context
 from app.services.ghl_client import GHLClient
 from app.services.ghl_links import build_ghl_contact_url
 from app.services.postgres_client import postgres
-from app.services.slack import post_slack_message
+from app.services.mattermost import post_message as post_slack_message
 from app.services.supabase_client import supabase
 from app.services.workflow_tracker import WorkflowTracker
 from app.tools.transfer_to_human import execute_transfer

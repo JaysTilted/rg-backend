@@ -61,7 +61,7 @@ class _MinimalModelCtx:
             "ai_models": setter.get("ai_models") or {},
             "ai_temperatures": setter.get("ai_temperatures") or {},
         }
-from app.services.slack import post_slack_message
+from app.services.mattermost import post_message as post_slack_message
 from app.services.supabase_client import supabase
 from app.services.workflow_tracker import WorkflowTracker
 from app.text_engine.booking import _parse_dt

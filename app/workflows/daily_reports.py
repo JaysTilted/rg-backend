@@ -24,18 +24,19 @@ from typing import Any
 from prefect import flow
 
 from app.config import settings
-from app.services.slack import (
-    create_slack_channel,
+from app.services.mattermost import (
+    create_channel as create_slack_channel,
     find_channel_by_name,
     invite_to_channel,
     notify_error,
-    post_slack_message,
+    post_message as post_slack_message,
 )
 from app.services.supabase_client import supabase
 
 logger = logging.getLogger(__name__)
 
-RANDY_SLACK_USER_ID = "U089A7K9DTL"
+# TODO: Replace with Mattermost user ID for channel invites
+RANDY_SLACK_USER_ID = ""
 
 # Schedule: 8:45 AM America/Chicago daily
 SCHEDULE_HOUR = 8

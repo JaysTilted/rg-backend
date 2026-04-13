@@ -14,7 +14,7 @@ from datetime import datetime, timedelta, timezone
 
 from prefect import flow
 
-from app.services.slack import notify_error
+from app.services.mattermost import notify_error
 from prefect.client.orchestration import get_client
 from prefect.client.schemas.filters import (
     FlowRunFilter,

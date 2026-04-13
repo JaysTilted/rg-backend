@@ -27,7 +27,7 @@ from typing import Any
 from prefect import flow
 
 from app.config import settings
-from app.services.slack import create_slack_channel, invite_to_channel, notify_error, post_slack_message
+from app.services.mattermost import create_channel as create_slack_channel, invite_to_channel, notify_error, post_message as post_slack_message
 from app.services.supabase_client import supabase
 from app.services.postgres_client import postgres
 from app.text_engine.data_loading import _build_prompts
@@ -39,7 +39,8 @@ logger = logging.getLogger(__name__)
 SCHEDULE_HOUR = 9
 SCHEDULE_MINUTE = 0
 SCHEDULE_TZ = ZoneInfo("America/Chicago")
-RANDY_SLACK_USER_ID = "U089A7K9DTL"
+# TODO: Replace with Mattermost user ID for channel invites
+RANDY_SLACK_USER_ID = ""
 
 
 # ============================================================================
