@@ -1,0 +1,15 @@
+.git
+.gitignore
+.tmp
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+dist/
+build/
+docker-compose.override.yml
+*.md
+.env.example
+tests/
+.pytest_cache/
+.ruff_cache/

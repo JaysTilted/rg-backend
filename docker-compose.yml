@@ -1,0 +1,31 @@
+services:
+  rg-backend:
+    build: .
+    expose:
+      - "8000"
+    environment:
+      - PREFECT_API_URL=http://prefect-server:4200/api
+      - PREFECT_LOGGING_EXTRA_LOGGERS=app
+    depends_on:
+      - prefect-server
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  prefect-server:
+    image: prefecthq/prefect:3-latest
+    command: prefect server start --host 0.0.0.0
+    expose:
+      - "4200"
+    volumes:
+      - prefect-data:/root/.prefect
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+volumes:
+  prefect-data:
