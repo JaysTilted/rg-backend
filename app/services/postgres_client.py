@@ -7,8 +7,10 @@ Uses asyncpg for direct SQL queries where the REST API is insufficient
 from __future__ import annotations
 
 import logging
+import ipaddress
 from datetime import datetime
 from typing import Any
+from urllib.parse import urlsplit
 
 import asyncpg
 
@@ -32,9 +34,16 @@ class PostgresClient:
         import ssl
 
         def _ssl_for_dsn(dsn: str):
-            # Local SSH-tunnel / host-gateway targets should stay plain TCP.
-            if any(host in dsn for host in ("host.docker.internal", "127.0.0.1", "localhost")):
+            # Local / host-routed Postgres targets should stay plain TCP.
+            host = (urlsplit(dsn).hostname or "").lower()
+            if host in {"host.docker.internal", "127.0.0.1", "localhost"}:
                 return None
+            try:
+                ip = ipaddress.ip_address(host)
+                if ip.is_loopback or ip.is_private or ip in ipaddress.ip_network("100.64.0.0/10"):
+                    return None
+            except ValueError:
+                pass
             ssl_ctx = ssl.create_default_context()
             ssl_ctx.check_hostname = False
             ssl_ctx.verify_mode = ssl.CERT_NONE
