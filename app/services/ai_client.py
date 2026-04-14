@@ -142,15 +142,20 @@ def _get_direct_model_id(model: str) -> str | None:
 
 
 def _should_prefer_azure(model: str) -> bool:
-    """Whether this model should execute against Azure before any fallback path."""
+    """Whether this model should execute against Azure before any fallback path.
+
+    Only routes to Azure when the resolved model matches a model actually
+    DEPLOYED on the Azure resource. On ironclaw.openai.azure.com only
+    `gpt-4.1` is deployed; routing anything else (mini/nano variants, 4o,
+    5.4) wastes ~8s per call in 404 retries before falling back.
+    """
     if not settings.azure_openai_api_key:
         return False
-    return model.startswith("openai/") or model in {
-        "gpt-4.1",
-        "gpt-4.1-mini",
-        "gpt-4o",
-        "gpt-4o-mini",
-    }
+    deployed = settings.azure_openai_model
+    if not deployed:
+        return False
+    # Direct match (e.g. "gpt-4.1") or openrouter-style prefix ("openai/gpt-4.1")
+    return model == deployed or model == f"openai/{deployed}"
 
 
 async def _azure_chat_completion(
