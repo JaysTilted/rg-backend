@@ -217,3 +217,4 @@ class TestRunResponse(BaseModel):
     duration_seconds: float
     run_id: str | None = None
     token_usage: dict[str, Any] = {}
+    tests: list[dict[str, Any]] = []

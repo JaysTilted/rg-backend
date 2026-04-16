@@ -427,11 +427,16 @@ async def run_tests(body: TestRunRequest) -> TestRunResponse:
         },
     )
 
-    # 6. Persist to Supabase
+    # 6. Persist to Supabase (best-effort — test_runs/pipeline_runs tables
+    # may not exist in backend-only deployments; ignore errors).
     run_id = await _persist_test_run(
         response, test_results, body.entity_id,
     )
     response.run_id = run_id
+
+    # 7. Inline results so E2E callers can read Scott's actual replies
+    # without needing access to the pipeline_runs table.
+    response.tests = test_results
 
     return response
 
