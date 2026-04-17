@@ -1130,20 +1130,6 @@ async def reply_pipeline(ctx: PipelineContext) -> dict[str, Any]:
     # Step 3.8: Agent routing & response generation (tool-calling loop)
     await call_agent(ctx)
 
-    # Fix 6.1: Post-agent stop bot re-check — n8n re-fetches GHL contact after
-    # agent runs to check if a human added "stop bot" tag while agent was processing.
-    # If tag was added, suppress the AI response.
-    if not ctx.is_test_mode:
-        try:
-            refreshed_contact = await ctx.ghl.get_contact(ctx.contact_id)
-            if refreshed_contact:
-                refreshed_tags = ", ".join(refreshed_contact.get("tags", []))
-                if "stop bot" in refreshed_tags:
-                    logger.info("Post-agent stop bot tag detected — suppressing AI response")
-                    return {"path": "No Reply Needed", "reason": "Stop bot tag added during agent processing"}
-        except Exception as e:
-            logger.warning("Post-agent stop bot re-check failed: %s", e)
-
     # If agent triggered transfer_to_human tool, suppress response
     if ctx.transfer_triggered:
         logger.info("Agent triggered transfer_to_human — suppressing AI response")
@@ -1193,6 +1179,15 @@ async def reply_pipeline(ctx: PipelineContext) -> dict[str, Any]:
             except Exception as e:
                 logger.warning("Failed to send Slack alert for empty agent response: %s", e)
 
+            # Empty-response recovery: the lead still needs to hear from us tomorrow.
+            # Schedule FU#1 so a silent LLM hiccup doesn't drop them from the ladder.
+            if not ctx.is_test_mode:
+                try:
+                    from app.services.message_scheduler import schedule_followup_chain
+                    await schedule_followup_chain(ctx, position=1, triggered_by="empty_response_recovery")
+                except Exception as e:
+                    logger.warning("FU scheduling after empty response failed: %s", e)
+
             return {"path": "No Reply Needed", "reason": "Agent returned empty response after retry"}
 
     # Step 3.8a: Security — term replacements + LLM compliance check
@@ -1211,6 +1206,21 @@ async def reply_pipeline(ctx: PipelineContext) -> dict[str, Any]:
 
     # Step 3.9: Post-agent processing (extraction, follow-up, pipeline)
     post_results = await post_agent_processing(ctx)
+
+    # Pre-delivery stop bot re-check — close the race between agent generation
+    # and actual SMS send. If staff tagged "stop bot" any time after the
+    # classification gate (during LLM work, security, post-processing), suppress
+    # the reply so we don't step on a human reply mid-conversation.
+    if not ctx.is_test_mode:
+        try:
+            refreshed_contact = await ctx.ghl.get_contact(ctx.contact_id)
+            if refreshed_contact:
+                refreshed_tags = ", ".join(refreshed_contact.get("tags", []))
+                if "stop bot" in refreshed_tags:
+                    logger.info("Pre-delivery stop bot tag detected — suppressing AI response")
+                    return {"path": "No Reply Needed", "reason": "Stop bot tag added before delivery"}
+        except Exception as e:
+            logger.warning("Pre-delivery stop bot re-check failed: %s", e)
 
     # Step 3.10 + 3.11: Response delivery (split, store, email) with test mode guards
     response = await deliver_response(ctx)
