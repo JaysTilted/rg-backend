@@ -287,9 +287,8 @@ async def _fire_followup(row: dict[str, Any]) -> dict[str, Any]:
     """Fire a follow-up message — build context, run pipeline, chain schedule."""
     from prefect import tags as prefect_tags
 
-    from app.main import supabase, build_run_tags, build_flow_name, _resolve_tenant_ai_keys
+    from app.main import supabase, build_run_tags, _resolve_tenant_ai_keys
     from app.models import PipelineContext
-    from app.text_engine.pipeline import text_engine
     from app.services.ghl_client import GHLClient
     from app.services.message_scheduler import (
         schedule_followup_chain,
@@ -338,11 +337,16 @@ async def _fire_followup(row: dict[str, Any]) -> dict[str, Any]:
         trigger_type="followup",
         agent_type="",
     )
-    flow_name = build_flow_name(slug, entity_id)
-
     try:
+        # Bypass Prefect's flow engine here — when invoked from this long-running
+        # asyncio scheduler loop, Prefect 3's client cache reuses a closed client
+        # and raises "The client cannot be started again after closing" on the
+        # second-onward firing. run_pipeline_with_tracking runs the same pipeline
+        # body with the same WorkflowTracker enrichment, just without @flow.
+        # Inbound /webhook/reply still uses the @flow path via debounce.
+        from app.text_engine.pipeline import run_pipeline_with_tracking
         with prefect_tags(*run_tags):
-            result = await text_engine.with_options(name=flow_name)(ctx)
+            result = await run_pipeline_with_tracking(ctx)
 
         fu_needed = result.get("followUpNeeded", False)
         result_path = result.get("path", "")
