@@ -16,6 +16,8 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
+from app.utils.text_scrub import scrub_dashes
+
 GHL_BASE = "https://services.leadconnectorhq.com"
 
 # Shared connection pool — created at app startup
@@ -386,6 +388,9 @@ class GHLClient:
         email_from: str | None = None,
     ) -> dict[str, Any]:
         """Send an email reply via GHL conversations API."""
+        # Final outbound boundary: em-dashes never reach the inbox.
+        subject = scrub_dashes(subject)
+        message = scrub_dashes(message)
         logger.info("GHL_API | send_email_reply | contact=%s | subject=%s | thread=%s", contact_id, subject[:50], bool(thread_id))
         payload: dict[str, Any] = {
             "type": "Email",
@@ -487,6 +492,8 @@ class GHLClient:
         Returns: {conversationId, messageId, traceId} on 201.
         Raises httpx.HTTPStatusError on 4xx/5xx.
         """
+        # Final outbound boundary: em-dashes never reach the carrier.
+        message = scrub_dashes(message)
         payload: dict[str, Any] = {
             "type": "SMS",
             "contactId": contact_id,
@@ -533,6 +540,9 @@ class GHLClient:
         html_body: str,
     ) -> dict[str, Any]:
         """Send a standalone (non-threaded) email. For outreach positions with email content."""
+        # Final outbound boundary: em-dashes never reach the inbox.
+        subject = scrub_dashes(subject)
+        html_body = scrub_dashes(html_body)
         logger.info("GHL_API | send_standalone_email | contact=%s | subject=%s", contact_id, subject[:50])
         payload: dict[str, Any] = {
             "type": "Email",

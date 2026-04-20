@@ -23,6 +23,7 @@ from typing import Any
 import httpx
 
 from app.services.ghl_client import GHLClient
+from app.utils.text_scrub import scrub_dashes
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +83,9 @@ class DeliveryService:
         message_type: str = "reply",
     ) -> DeliveryResult:
         """Send a single SMS with provider-aware delivery confirmation + retry."""
+
+        # 0. Final-line-of-defense scrub. Em-dashes never leave this process.
+        message = scrub_dashes(message)
 
         # 1. Send via GHL API
         attachments = [media_url] if media_url else None
@@ -222,6 +226,8 @@ class DeliveryService:
         html_body: str,
     ) -> DeliveryResult:
         """Send standalone email via GHL API (for outreach, not threaded)."""
+        subject = scrub_dashes(subject)
+        html_body = scrub_dashes(html_body)
         try:
             result = await self.ghl.send_standalone_email(contact_id, subject, html_body)
             return DeliveryResult(
@@ -337,6 +343,7 @@ class DeliveryService:
         message_type: str,
     ) -> DeliveryResult:
         """Retry a failed send one time."""
+        message = scrub_dashes(message)
         attachments = [media_url] if media_url else None
         send_time = datetime.now(timezone.utc)
 
