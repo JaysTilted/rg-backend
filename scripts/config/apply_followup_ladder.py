@@ -33,10 +33,12 @@ LADDER_POSITIONS: list[dict[str, Any]] = [
     {
         "position": 1,
         "timing_label": "Day 1",
-        "goal": "Bump — acknowledge silence, re-offer the screen share.",
+        "goal": "Bump — re-engage without assuming opener variant.",
         "approach": (
-            "Short, casual. Reference that you were going to show them what you built. "
-            "Example: 'hey — still want me to show you what I threw together? takes 10 mins.'"
+            "Short, casual, properly capitalized. Re-engage neutrally without referring "
+            "to website-vs-results pitch (we don't know which opener variant the lead saw). "
+            "Reference [business] by name. "
+            "Example: 'Hey — still want to see how this''d work for [business]? Takes 10 mins.'"
         ),
     },
     {
@@ -45,7 +47,7 @@ LADDER_POSITIONS: list[dict[str, Any]] = [
         "goal": "Proof — drop a concrete win from a similar business.",
         "approach": (
             "One sentence of proof + one sentence invite. No links. "
-            "Example: 'just wrapped one for another [industry] guy last week — site + funnel live in 3 days. want to see yours?'"
+            "Example: 'Just wrapped one for another [industry] shop last week — site + funnel live in 3 days. Want to see yours?'"
         ),
     },
     {
@@ -54,7 +56,7 @@ LADDER_POSITIONS: list[dict[str, Any]] = [
         "goal": "Preempt the 'too busy' objection.",
         "approach": (
             "Acknowledge they're slammed, reframe the call as time-saving, not time-costing. "
-            "Example: 'if you're slammed I get it — this actually saves you time once it's running. 10 mins to walk you through it.'"
+            "Example: 'If you're slammed I get it — this actually saves you time once it's running. 10 mins to walk you through it.'"
         ),
     },
     {
@@ -63,7 +65,7 @@ LADDER_POSITIONS: list[dict[str, Any]] = [
         "goal": "Pain dig — reopen discovery with a specific question.",
         "approach": (
             "Pick ONE: lead flow, follow-up speed, or booking friction. Ask which is the biggest bottleneck. "
-            "Example: 'what's the biggest bottleneck right now — lead flow, follow-up speed, or booking?'"
+            "Example: 'What's the biggest bottleneck right now — lead flow, follow-up speed, or booking?'"
         ),
     },
     {
@@ -72,7 +74,7 @@ LADDER_POSITIONS: list[dict[str, Any]] = [
         "goal": "Outcome framing — paint the ROI in one line.",
         "approach": (
             "Name a real result number and tie it back to their business. "
-            "Example: 'for another [industry] shop this added 6-8 extra jobs a month. want me to show you how it'd run for [business]?'"
+            "Example: 'For another [industry] shop this added 6-8 extra jobs a month. Want me to show you how it'd run for [business]?'"
         ),
     },
     {
@@ -80,8 +82,8 @@ LADDER_POSITIONS: list[dict[str, Any]] = [
         "timing_label": "Day 6",
         "goal": "Lower the commitment — reduce friction to the call.",
         "approach": (
-            "Reframe as a zero-pitch demo. Emphasize brevity. "
-            "Example: '10 min screen share — no pitch. you'll see exactly how it'd run for your shop.'"
+            "Reframe as a zero-pitch demo. Emphasize brevity. Do NOT ask a discovery question here — that's Day 4's job. "
+            "Example: '10 min screen share, no pitch. You'll see exactly how it'd run for your shop.'"
         ),
     },
     {
@@ -90,7 +92,7 @@ LADDER_POSITIONS: list[dict[str, Any]] = [
         "goal": "Direct interest check — is this still on their radar.",
         "approach": (
             "Ask plainly if tightening up leads/follow-up is still something they care about. "
-            "Example: 'is tightening up leads / follow-up still on your radar?'"
+            "Example: 'Is tightening up leads / follow-up still on your radar?'"
         ),
     },
     {
@@ -99,7 +101,7 @@ LADDER_POSITIONS: list[dict[str, Any]] = [
         "goal": "Graceful out — invite them to re-engage on their timing.",
         "approach": (
             "Close with dignity. No pressure. Offer a clean door to come back through. "
-            "Example: 'i'll stop bugging you unless you say otherwise. if timing's not right, just text me when it is.'"
+            "Example: 'I'll stop bugging you unless you say otherwise. If timing's not right, just text me when it is.'"
         ),
     },
 ]
@@ -123,26 +125,47 @@ LT_THEMES = [
 # isn't high enough to justify 56 hand-written scripts — the LLM riffs from
 # the approach string + current lead context.
 LT_PLACEHOLDERS = {
-    0: "example: 'quick one — 72% of service leads never get a reply in under 5 mins. costs the business real money. want to see how we close that gap?'",
-    1: "example: 'an HVAC guy we set up in austin went from 6 jobs/mo to 14 in ~60 days. no ad spend increase. want to see his setup?'",
-    2: "example: 'curious — what's the #1 thing you'd fix in your lead flow if you had a magic wand?'",
-    3: "example: 'tip: if your missed-call textback says more than 2 lines, the reply rate drops hard. keep it stupid short.'",
-    4: "example: 'site + automation stack is still $297/mo, no contract. 10 mins on a call and i can show you exactly what it'd run like for you.'",
-    5: "example: 'hey — how's things going? any movement on the lead flow side?'",
-    6: "example: 'dropped a short walkthrough video here if you're curious: https://grow.ironautomations.com/watch — no sign-up, no pitch.'",
+    0: "Example: 'Quick one — 72% of service leads never get a reply in under 5 mins. Costs the business real money. Want to see how we close that gap?'",
+    1: "Example: 'An HVAC shop we set up in Austin went from 6 jobs/mo to 14 in ~60 days. No ad-spend increase. Want to see his setup?'",
+    2: "Example: 'Curious — what's the #1 thing you'd fix in your lead flow if you had a magic wand?'",
+    3: "Example: 'Tip — if your missed-call textback is longer than 2 lines, reply rate drops hard. Keep it short.'",
+    4: "Example: 'Site + automation stack is still $297/mo, no contract. 10 mins on a call and I can show you exactly what it'd run like for you.'",
+    5: "Example: 'Hey — how's things going? Any movement on the lead-flow side?'",
+    6: "Example: 'Dropped a short walkthrough video if you're curious: https://grow.ironautomations.com/watch — no sign-up, no pitch.'",
 }
 
 
 def build_lt_positions() -> list[dict[str, Any]]:
+    """Generate 56 LT-nurture positions (weeks 1-8, daily Mon-Sun).
+
+    Weeks 1-4 are value-only (no offer pushes — build trust first). The
+    Friday position (day_idx=4) gets swapped to a Workflow Tip instead of
+    Offer Reminder for those weeks. Weeks 5-8 keep the standard rotation
+    where Friday = Offer Reminder (4 total offer pushes across the LT phase).
+    """
     positions: list[dict[str, Any]] = []
     pos_num = 9
     for week in range(1, 9):  # Week 1..8
         for day_idx, (theme_label, approach) in enumerate(LT_THEMES):
+            # Suppress offer pushes in weeks 1-4 — replace Friday's Offer
+            # Reminder (day_idx=4) with a value-only Workflow Tip variant.
+            if day_idx == 4 and week <= 4:
+                effective_label = "Workflow Tip (no-offer week)"
+                effective_approach = (
+                    "Share a tiny actionable tip the lead can apply this week even "
+                    "without us. Builds goodwill. NO mention of $297 or our offer "
+                    "— this is a trust-building week. "
+                    "Example: 'Tip — if your booking confirmation doesn''t include "
+                    "the calendar invite, no-show rate jumps. Auto-attach it on send.'"
+                )
+            else:
+                effective_label = theme_label
+                effective_approach = f"{approach} {LT_PLACEHOLDERS[day_idx]}"
             positions.append({
                 "position": pos_num,
                 "timing_label": f"Week {week} {_DOW_LABELS[day_idx]}",
-                "goal": f"{theme_label} — week {week}. Keep it alive without pressuring.",
-                "approach": f"{approach} {LT_PLACEHOLDERS[day_idx]}",
+                "goal": f"{effective_label} — week {week}. Keep it alive without pressuring.",
+                "approach": effective_approach,
             })
             pos_num += 1
     return positions

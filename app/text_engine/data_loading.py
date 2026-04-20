@@ -383,7 +383,7 @@ def _compile_system_config(ctx: PipelineContext, sc: dict[str, Any]) -> None:
 
     # Follow-up
     follow_up = follow_up_config
-    ctx.compiled["followup_preferences"] = compile_followup_preferences(follow_up)
+    ctx.compiled["followup_preferences"] = compile_followup_preferences(follow_up, ctx.contact_tags)
     ctx.compiled["followup_banned_phrases"] = compile_followup_banned_phrases(follow_up)
     ctx.compiled["followup_positions_determination"] = compile_followup_positions_for_determination(follow_up)
 

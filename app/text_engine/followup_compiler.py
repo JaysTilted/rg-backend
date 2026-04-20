@@ -16,10 +16,102 @@ from __future__ import annotations
 from typing import Any
 
 
-def compile_followup_preferences(follow_up: dict[str, Any] | None) -> str:
+_BRANCH_GUIDANCE = {
+    "counter_offer": (
+        "This lead pushed back on commercial structure (offered alt pricing like "
+        "'$X per closed deal' / 'pay on results only'). The redirect-to-call already "
+        "fired in the reply path. For this followup: address the pricing-model question "
+        "head-on, briefly. Acknowledge the alt model exists for our larger setups (results-tied "
+        "billing for high-volume operators), then pivot back to the 10-min call. "
+        "Do NOT re-debate price via SMS."
+    ),
+    "vetting": (
+        "This lead questioned legitimacy (asked who you are / scam / suspicion). The "
+        "vetting reply already named Iron Automations and dropped the URL. For this "
+        "followup: briefly re-establish trust without sounding defensive. Reference one "
+        "concrete proof point (an industry stat, a real shop's outcome, the watch link). "
+        "Do NOT repeat the company-name introduction verbatim."
+    ),
+    "niche_correction": (
+        "This lead corrected the trade we assumed (e.g. drain cleaning vs plumbing, "
+        "electrical vs HVAC). Use their actual trade name in the followup, NEVER the "
+        "wrong one. Same automation pitch — adapt the example to their real category."
+    ),
+    "wrong_line": (
+        "This contact said the line is for customer service inquiries only. DO NOT send "
+        "any further followups. Return early without generating a message — this lead "
+        "should be skipped entirely going forward."
+    ),
+    "referral_handoff": (
+        "This lead was already routed to a human (referred us to a partner/associate). "
+        "DO NOT send a followup — a person from our team is handling the referred "
+        "contact directly. Return early without generating a message."
+    ),
+    "wrong_number_pivot": (
+        "This contact said wrong number. DO NOT send any further followups — we already "
+        "sent one polite reply with the URL referral. Return early without generating "
+        "a message."
+    ),
+    "competitive_positioning": (
+        "This lead asked how Iron Automations differs from another channel (FB ads, "
+        "Google ads, named agency). The reply already gave the one-line differentiator "
+        "(we automate response/booking, not lead-gen). For this followup: lean into "
+        "the differentiator with one concrete tactical example, then pivot back to the call."
+    ),
+    "immediate_call_request": (
+        "This lead asked to be called immediately. The reply offered today's calendar "
+        "slots. For this followup: acknowledge they wanted action fast — reoffer the "
+        "next earliest slot today or tomorrow morning. Stay urgent in tone."
+    ),
+    "booking_management": (
+        "This lead asked about cancelling/rescheduling an appointment. The reply asked "
+        "them to confirm intent (cancel vs reschedule). For this followup: nudge for the "
+        "confirmation if they haven't replied, e.g. 'just checking — did you want to cancel "
+        "outright or reschedule?'"
+    ),
+}
+
+
+def compile_branch_context(contact_tags: list[str] | None) -> str:
+    """Detect branch:* tags on the contact and return per-branch guidance for the
+    followup agent's system prompt. Returns empty string when no branch tag is set.
+
+    For ``wrong_line`` / ``referral_handoff`` / ``wrong_number_pivot`` the guidance
+    instructs the followup agent to skip the message entirely (the message_scheduler
+    won't enforce skip on its own — the agent must decide).
+    """
+    if not contact_tags:
+        return ""
+    branches: list[str] = []
+    for tag in contact_tags:
+        if isinstance(tag, str) and tag.lower().startswith("branch:"):
+            branch = tag.split(":", 1)[1].strip().lower()
+            if branch and branch not in branches:
+                branches.append(branch)
+    if not branches:
+        return ""
+    blocks: list[str] = []
+    for branch in branches:
+        guidance = _BRANCH_GUIDANCE.get(branch)
+        if guidance:
+            blocks.append(f"### Branch: {branch}\n{guidance}")
+        else:
+            blocks.append(f"### Branch: {branch}\n(no specific guidance — handle generically)")
+    header = "## Branch Context\nThis lead came in via a branch reply path. Tailor the followup accordingly:\n"
+    return header + "\n\n".join(blocks)
+
+
+def compile_followup_preferences(
+    follow_up: dict[str, Any] | None,
+    contact_tags: list[str] | None = None,
+) -> str:
     """Compile follow-up preferences for the text generator prompt.
 
     This is injected as {followup_agent_prompt} in _FOLLOWUP_AGENT_SYSTEM.
+
+    If the contact has a ``branch:*`` tag (set by the reply agent's mark_branch
+    tool), branch-specific guidance is appended so the followup ladder tailors
+    its copy to the reply path the lead came in through.
     """
     if not follow_up:
         return ""
@@ -118,6 +210,13 @@ def compile_followup_preferences(follow_up: dict[str, Any] | None) -> str:
     # Freeform prompt
     if freeform:
         parts.append(f"## Additional Instructions\n{freeform}")
+
+    # Branch context — only present when the reply agent fired one of the branch
+    # scripts and tagged the contact. Appended last so it sits after baseline
+    # preferences in the followup agent's system prompt.
+    branch_block = compile_branch_context(contact_tags)
+    if branch_block:
+        parts.append(branch_block)
 
     return "\n\n".join(parts).strip()
 
