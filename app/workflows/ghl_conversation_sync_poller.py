@@ -38,6 +38,12 @@ STARTUP_GRACE_SECONDS = 45
 # window. Older inbound is still logged + dedupe'd, but we don't wake Scott
 # up on week-old conversations that were never manually answered.
 REPLY_TRIGGER_MAX_AGE_HOURS = 6
+# How many most-recent GHL conversations to scan on each pass. This covers
+# cold leads whose first reply may never have created a chat-history row
+# because the SH webhook was dropped. Union with rg_chat-active contacts.
+GHL_CONVERSATIONS_PER_PASS = 100
+# Small per-contact delay to avoid bursting GHL rate limits on large cohorts.
+PER_CONTACT_SLEEP_MS = 100
 
 
 async def _list_active_entities() -> list[dict[str, Any]]:
@@ -231,19 +237,62 @@ async def _sync_one_entity(entity: dict[str, Any]) -> None:
         )
         return
 
-    active = await _active_contacts_for_table(chat_table, ACTIVE_WINDOW_DAYS)
-    if not active:
-        return
-
-    logger.info(
-        "SYNC_POLLER | entity=%s | table=%s | active_contacts=%d",
-        entity_id[:8], chat_table, len(active),
-    )
-
     ghl = GHLClient(api_key=ghl_api_key, location_id=ghl_location_id)
     config = dict(entity)
 
-    for contact_id in active:
+    # Contact discovery: union of two sources.
+    #   A) rg_chat active contacts (last N days) — contacts we already track
+    #   B) GHL's N most-recent conversations in this location — catches
+    #      brand-new cold leads whose first reply was webhook-dropped
+    #      before any chat-history row existed.
+    contact_set: set[str] = set()
+
+    from_chat = await _active_contacts_for_table(chat_table, ACTIVE_WINDOW_DAYS)
+    contact_set.update(from_chat)
+
+    from_ghl: list[str] = []
+    try:
+        convs = await ghl.list_recent_conversations(
+            limit=GHL_CONVERSATIONS_PER_PASS
+        )
+        for c in convs:
+            cid = c.get("contactId") or ""
+            if cid:
+                from_ghl.append(cid)
+        contact_set.update(from_ghl)
+    except Exception as e:
+        logger.warning(
+            "SYNC_POLLER | list_recent_conversations failed | entity=%s | err=%s",
+            entity_id[:8], e,
+        )
+
+    if not contact_set:
+        return
+
+    logger.info(
+        "SYNC_POLLER | entity=%s | table=%s | from_chat=%d from_ghl=%d union=%d",
+        entity_id[:8], chat_table, len(from_chat), len(from_ghl), len(contact_set),
+    )
+
+    # Pass-level counters for summary log
+    from datetime import datetime, timezone
+    pass_started_at = datetime.now(timezone.utc)
+    pass_counts = {
+        "contacts_scanned": 0,
+        "contacts_with_changes": 0,
+        "new_inbound": 0,
+        "new_manual": 0,
+        "new_workflow": 0,
+        "new_ai": 0,
+        "pipelines_triggered": 0,
+        "stop_bot_tags_applied": 0,
+        "errors": 0,
+    }
+
+    for contact_id in sorted(contact_set):
+        pass_counts["contacts_scanned"] += 1
+        if PER_CONTACT_SLEEP_MS > 0:
+            await asyncio.sleep(PER_CONTACT_SLEEP_MS / 1000.0)
         try:
             counts = await _sync_one_contact(
                 contact_id, ghl, chat_table, entity_id, config
@@ -255,6 +304,12 @@ async def _sync_one_entity(entity: dict[str, Any]) -> None:
             if total_new == 0:
                 continue
 
+            pass_counts["contacts_with_changes"] += 1
+            pass_counts["new_inbound"] += int(counts["new_inbound"])
+            pass_counts["new_manual"] += int(counts["new_manual"])
+            pass_counts["new_workflow"] += int(counts["new_workflow"])
+            pass_counts["new_ai"] += int(counts["new_ai"])
+
             logger.info(
                 "SYNC_POLLER | contact=%s | new_inbound=%d new_manual=%d new_workflow=%d new_ai=%d",
                 contact_id, counts["new_inbound"], counts["new_manual"],
@@ -264,6 +319,7 @@ async def _sync_one_entity(entity: dict[str, Any]) -> None:
             if int(counts["new_manual"]) > 0:
                 try:
                     await ghl.add_tag(contact_id, "stop bot")
+                    pass_counts["stop_bot_tags_applied"] += 1
                 except Exception as e:
                     logger.warning(
                         "SYNC_POLLER | add_tag(stop bot) failed | contact=%s | err=%s",
@@ -282,7 +338,7 @@ async def _sync_one_entity(entity: dict[str, Any]) -> None:
                 should_trigger = False
                 if latest_ts is not None:
                     try:
-                        from datetime import datetime, timezone, timedelta
+                        from datetime import timedelta
                         if isinstance(latest_ts, datetime):
                             age = datetime.now(timezone.utc) - latest_ts
                         else:
@@ -292,6 +348,7 @@ async def _sync_one_entity(entity: dict[str, Any]) -> None:
                         should_trigger = True
                 if should_trigger:
                     await _trigger_reply_pipeline(entity_id, contact_id, config)
+                    pass_counts["pipelines_triggered"] += 1
                     logger.info(
                         "SYNC_POLLER | MISSED_INBOUND | contact=%s | pipeline_triggered=true",
                         contact_id,
@@ -302,9 +359,21 @@ async def _sync_one_entity(entity: dict[str, Any]) -> None:
                         contact_id, latest_ts,
                     )
         except Exception:
+            pass_counts["errors"] += 1
             logger.exception(
                 "SYNC_POLLER | contact processing error | contact=%s", contact_id
             )
+
+    elapsed = (datetime.now(timezone.utc) - pass_started_at).total_seconds()
+    logger.info(
+        "SYNC_POLLER | pass_complete | entity=%s | elapsed=%.1fs | scanned=%d changed=%d inbound=%d manual=%d workflow=%d ai=%d pipelines=%d stopbot=%d errors=%d",
+        entity_id[:8], elapsed,
+        pass_counts["contacts_scanned"], pass_counts["contacts_with_changes"],
+        pass_counts["new_inbound"], pass_counts["new_manual"],
+        pass_counts["new_workflow"], pass_counts["new_ai"],
+        pass_counts["pipelines_triggered"], pass_counts["stop_bot_tags_applied"],
+        pass_counts["errors"],
+    )
 
 
 async def run_conversation_sync_poller() -> None:

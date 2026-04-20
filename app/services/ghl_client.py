@@ -291,6 +291,35 @@ class GHLClient:
     # CONVERSATIONS
     # =========================================================================
 
+    async def list_recent_conversations(
+        self, limit: int = 100, sort: str = "desc", sort_by: str = "last_message_date"
+    ) -> list[dict[str, Any]]:
+        """List conversations in this location sorted by last-message date.
+
+        Used by the sync poller to discover contacts with recent activity
+        (including cold leads whose first reply may never have created a
+        chat-history row yet because the SH webhook was dropped).
+
+        Returns the raw conversation objects; each has at least
+        ``id``, ``contactId``, and ``lastMessageDate``.
+        """
+        resp = await self._request(
+            "GET", "/conversations/search",
+            version="2021-04-15",
+            params={
+                "locationId": self.location_id,
+                "limit": str(max(1, min(limit, 100))),
+                "sort": sort,
+                "sortBy": sort_by,
+            },
+        )
+        conversations = resp.json().get("conversations", [])
+        logger.info(
+            "GHL_API | list_recent_conversations | location=%s | count=%d | sort=%s/%s",
+            self.location_id, len(conversations), sort_by, sort,
+        )
+        return conversations
+
     async def get_conversation_messages(
         self, contact_id: str
     ) -> list[dict[str, Any]]:
