@@ -5,7 +5,7 @@ P1 here is a beefier single message that combines personal callback + offer/pric
 
 This is a TEST ONLY — no production code is modified. Delete this file to undo everything.
 
-Usage: docker compose exec rg-backend python -m app.test_p1_only
+Usage: docker compose exec iron-setter python -m app.test_p1_only
 """
 
 import asyncio

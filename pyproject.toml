@@ -1,7 +1,7 @@
 [project]
-name = "rg-backend"
+name = "iron-setter"
 version = "0.1.0"
-description = "BookMyLeads Backend — AI Lead Recovery System (FastAPI + Prefect)"
+description = "iron-setter — AI SMS reply agent for Iron Automations (FastAPI + Prefect)"
 requires-python = ">=3.12"
 dependencies = [
     # Web framework
@@ -31,6 +31,9 @@ dependencies = [
 
     # Environment variables
     "python-dotenv>=1.0.0",
+
+    # Manifest updates for Mermaid -> Miro sync
+    "PyYAML>=6.0.2",
 
     # Tokenizer (for LLM cost estimation)
     "tiktoken>=0.8.0",

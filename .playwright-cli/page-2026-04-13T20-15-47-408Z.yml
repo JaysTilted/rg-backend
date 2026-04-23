@@ -1,0 +1,54 @@
+- generic [ref=e14]:
+  - generic [ref=e16]:
+    - link "Go to homepage" [ref=e17] [cursor=pointer]:
+      - /url: ./
+      - img [ref=e18]
+    - generic [ref=e20]:
+      - generic [ref=e21]: "Platform Language:"
+      - combobox [ref=e22]:
+        - option "English" [selected]
+        - option "Dansk"
+        - option "Deutsch"
+        - option "Español"
+        - option "Suomi"
+        - option "Français (Canada)"
+        - option "Français (France)"
+        - option "Italiano"
+        - option "Nederlands"
+        - option "Norsk"
+        - option "Português (Brasil)"
+        - option "Português (Portugal)"
+        - option "Svenska"
+  - generic [ref=e79]:
+    - heading "Verify Security Code" [level=2] [ref=e81]
+    - generic [ref=e82]:
+      - generic [ref=e83]:
+        - generic [ref=e84]:
+          - radio "Send code to email" [checked] [ref=e85]
+          - generic [ref=e86]: Send code to email
+        - paragraph [ref=e87]: ja*********@gmail.com
+      - generic [ref=e88]:
+        - generic [ref=e89]:
+          - radio "Send code to phone" [disabled] [ref=e90]
+          - generic [ref=e91]: Send code to phone
+        - paragraph [ref=e92]: +1*******367
+    - generic [ref=e98]:
+      - generic [ref=e99]:
+        - spinbutton [active] [ref=e100]
+        - generic [ref=e101]: "-"
+      - generic [ref=e102]:
+        - spinbutton [ref=e103]
+        - generic [ref=e104]: "-"
+      - generic [ref=e105]:
+        - spinbutton [ref=e106]
+        - generic [ref=e107]: "-"
+      - generic [ref=e108]:
+        - spinbutton [ref=e109]
+        - generic [ref=e110]: "-"
+      - generic [ref=e111]:
+        - spinbutton [ref=e112]
+        - generic [ref=e113]: "-"
+      - spinbutton [ref=e115]
+    - alert [ref=e116]:
+      - generic [ref=e117]: We have sent a security code (OTP) to your ja*********@gmail.com. Please check your inbox for this code.
+    - generic [ref=e118] [cursor=pointer]: If you did not receive the code click here to resend (27s)

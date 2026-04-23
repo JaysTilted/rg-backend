@@ -7,7 +7,7 @@
 4. Wrong customer type (permanent) → should skip
 5. No qualification data → should reactivate (default)
 
-Usage: docker compose exec rg-backend python -m app.test_qual_gate
+Usage: docker compose exec iron-setter python -m app.test_qual_gate
 """
 
 import asyncio

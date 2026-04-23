@@ -40,10 +40,6 @@ class Settings(BaseSettings):
     # Prefect
     prefect_api_url: str = "http://localhost:4200/api"
 
-    # Signal House
-    signal_house_api_key: str = ""
-    signal_house_auth_token: str = ""
-
     # GHL Snapshot (agency account — used for staff notifications)
     ghl_snapshot_api_key: str = ""
     ghl_snapshot_location_id: str = ""

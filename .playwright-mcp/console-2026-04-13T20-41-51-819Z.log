@@ -1,0 +1,9 @@
+[     231ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://app.gohighlevel.com/v2/location/ctGiSfuydlm90NJWq6RV/dashboard:0
+[    1168ms] [WARNING] The PerformanceObserver does not support buffered flag with the entryTypes argument. @ https://static.leadconnectorhq.com/1319/js/chunk.CFTHSyyI.js:57
+[    1878ms] [LOG] This is test file @ https://static.leadconnectorhq.com/1319/js/chunk.C1si3Vuy.js:16
+[    3416ms] [WARNING] [ Federation Runtime ] Version 1.7.2 from spm-ts-runtime-remote-apps of shared singleton module axios does not satisfy the requirement of launchpadApp which needs ^1.13.2) @ https://static.leadconnectorhq.com/1319/js/chunk.C1si3Vuy.js:16
+[    7249ms] [WARNING] [ Federation Runtime ] Version 1.7.2 from spm-ts-runtime-remote-apps of shared singleton module axios does not satisfy the requirement of mediaEditorApp which needs ^1.13.2) @ https://static.leadconnectorhq.com/1319/js/chunk.C1si3Vuy.js:16
+[    7334ms] [WARNING] [ Federation Runtime ] Version 1.7.2 from spm-ts-runtime-remote-apps of shared singleton module axios does not satisfy the requirement of onboardingApp which needs ^1.13.2) @ https://static.leadconnectorhq.com/1319/js/chunk.C1si3Vuy.js:16
+[    8190ms] [ERROR] Failed to load resource: the server responded with a status of 400 () @ https://backend.leadconnectorhq.com/phone-system/voice-call/location/ctGiSfuydlm90NJWq6RV/token?userId=eP5b0SJO95njgNDz3vRh&isNewFlow=true&reason=initializeDialer:0
+[   10767ms] [LOG] Active User Object:  {callQueue: Array(1), customer_id: ctGiSfuydlm90NJWq6RV, userContactList: Array(0), userRecentCalls: Array(0), userCallFromNumberList: Array(0)} @ https://voice.signalhouse.io/app/ctGiSfuydlm90NJWq6RV:764
+[   12684ms] [LOG] [Voice App] Sending ready to parent with calling number: +12678718781 @ https://voice.signalhouse.io/scripts/Init.js:86

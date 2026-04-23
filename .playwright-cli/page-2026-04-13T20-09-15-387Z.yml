@@ -1,0 +1,64 @@
+- generic [ref=e13]:
+  - generic [ref=e14]:
+    - generic [ref=e16]:
+      - link "Go to homepage" [ref=e17] [cursor=pointer]:
+        - /url: ./
+        - img [ref=e18]
+      - generic [ref=e20]:
+        - generic [ref=e21]: "Platform Language:"
+        - combobox [ref=e22]:
+          - option "English" [selected]
+          - option "Dansk"
+          - option "Deutsch"
+          - option "Español"
+          - option "Suomi"
+          - option "Français (Canada)"
+          - option "Français (France)"
+          - option "Italiano"
+          - option "Nederlands"
+          - option "Norsk"
+          - option "Português (Brasil)"
+          - option "Português (Portugal)"
+          - option "Svenska"
+    - generic [ref=e26]:
+      - heading "Sign into your account" [level=2] [ref=e28]
+      - generic [ref=e29]:
+        - generic [ref=e31]:
+          - generic [ref=e33]: Email
+          - textbox "Your email address" [ref=e35]: jayjlee1216@gmail.com
+        - generic [ref=e36]:
+          - generic [ref=e37]:
+            - generic [ref=e39]: Password
+            - generic [ref=e40]:
+              - textbox "The password you picked" [ref=e41]: Bailey1216!
+              - button "Show password" [ref=e42] [cursor=pointer]
+          - link "Forgot password?" [ref=e43] [cursor=pointer]:
+            - /url: /forgot_password?email=jayjlee1216@gmail.com
+        - button "Sign in" [ref=e46] [cursor=pointer]
+      - generic [ref=e52]: Or Continue with
+      - iframe [ref=e56]:
+        - button "Sign in with Google. Opens in new tab" [ref=f6e3] [cursor=pointer]:
+          - generic [ref=f6e5]:
+            - img [ref=f6e7]
+            - generic [ref=f6e14]: Sign in with Google
+      - paragraph [ref=e57]:
+        - text: By signing in you agree to our
+        - link "Terms and Conditions" [ref=e58] [cursor=pointer]:
+          - /url: https://www.gohighlevel.com/terms-of-service
+  - dialog [active] [ref=e59]:
+    - document:
+      - generic [ref=e62]:
+        - paragraph [ref=e63]: Choose an account to continue
+        - generic [ref=e64]:
+          - generic [ref=e66]:
+            - text: Jayson Lee
+            - generic [ref=e67]: jayson lee
+          - generic [ref=e69]:
+            - text: Jayson Lee
+            - generic [ref=e70]: Iron Automations
+          - generic [ref=e72]:
+            - text: Jay Lee
+            - generic [ref=e73]: My Lead Suite
+          - generic [ref=e75]:
+            - text: Jayson Lee
+            - generic [ref=e76]: Iron Automations

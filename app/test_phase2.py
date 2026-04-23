@@ -4,7 +4,7 @@ Generates complete 6-position SMS drips for 3 diverse fake scenarios.
 Tests banned pattern enforcement and sensitivity pre-scan in action.
 Outputs everything for manual review — no auto-grading.
 
-Usage: docker compose exec rg-backend python -m app.test_phase2
+Usage: docker compose exec iron-setter python -m app.test_phase2
 """
 
 import asyncio

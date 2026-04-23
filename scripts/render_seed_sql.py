@@ -13,7 +13,7 @@ TEMPLATE_PATH = ROOT / "STARTER_SYSTEM_CONFIG_TEMPLATE.json"
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Render seed SQL for a fresh rg-backend entity.")
+    parser = argparse.ArgumentParser(description="Render seed SQL for a fresh iron-setter entity.")
     parser.add_argument("--tenant-name", required=True, help="Tenant name to insert.")
     parser.add_argument("--entity-name", required=True, help="Business/entity name to create.")
     parser.add_argument(

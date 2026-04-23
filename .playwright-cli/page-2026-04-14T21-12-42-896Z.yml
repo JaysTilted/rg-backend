@@ -1,0 +1,46 @@
+- generic [ref=e21]:
+  - generic [ref=e23]:
+    - link "Go to homepage" [ref=e24] [cursor=pointer]:
+      - /url: ./
+      - img [ref=e25]
+    - generic [ref=e27]:
+      - generic [ref=e28]: "Platform Language:"
+      - combobox [ref=e29]:
+        - option "English" [selected]
+        - option "Dansk"
+        - option "Deutsch"
+        - option "Español"
+        - option "Suomi"
+        - option "Français (Canada)"
+        - option "Français (France)"
+        - option "Italiano"
+        - option "Nederlands"
+        - option "Norsk"
+        - option "Português (Brasil)"
+        - option "Português (Portugal)"
+        - option "Svenska"
+  - generic [ref=e33]:
+    - heading "Sign into your account" [level=2] [ref=e35]
+    - generic [ref=e36]:
+      - generic [ref=e38]:
+        - generic [ref=e40]: Email
+        - textbox "Your email address" [ref=e42]
+      - generic [ref=e43]:
+        - generic [ref=e44]:
+          - generic [ref=e46]: Password
+          - generic [ref=e47]:
+            - textbox "The password you picked" [ref=e48]
+            - button "Show password" [ref=e49] [cursor=pointer]
+        - link "Forgot password?" [ref=e50] [cursor=pointer]:
+          - /url: /forgot_password?email=
+      - button "Sign in" [ref=e53] [cursor=pointer]
+    - generic [ref=e59]: Or Continue with
+    - iframe [ref=e63]:
+      - button "Sign in with Google. Opens in new tab" [ref=f32e3] [cursor=pointer]:
+        - generic [ref=f32e5]:
+          - img [ref=f32e7]
+          - generic [ref=f32e14]: Sign in with Google
+    - paragraph [ref=e64]:
+      - text: By signing in you agree to our
+      - link "Terms and Conditions" [ref=e65] [cursor=pointer]:
+        - /url: https://www.gohighlevel.com/terms-of-service

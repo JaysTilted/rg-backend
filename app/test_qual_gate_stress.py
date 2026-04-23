@@ -8,7 +8,7 @@
 - Partial qualification
 - Edge cases (competitor, wrong number, one-time service completed)
 
-Usage: docker compose exec rg-backend python -m app.test_qual_gate_stress
+Usage: docker compose exec iron-setter python -m app.test_qual_gate_stress
 """
 
 import asyncio

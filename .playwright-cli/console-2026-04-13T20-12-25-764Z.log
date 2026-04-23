@@ -1,0 +1,8 @@
+[    4552ms] [WARNING] The PerformanceObserver does not support buffered flag with the entryTypes argument. @ https://static.leadconnectorhq.com/1319/js/chunk.CFTHSyyI.js:57
+[    4763ms] [ERROR] The user is not logged in. user_not_logged_in @ https://static.leadconnectorhq.com/1319/js/chunk.C1si3Vuy.js:16
+[    4939ms] [WARNING] [GSI_LOGGER]: Failed to render button before calling initialize(). @ https://static.leadconnectorhq.com/1319/js/chunk.C1si3Vuy.js:16
+[    5014ms] [ERROR] Not signed in with the identity provider. @ https://app.gohighlevel.com/:0
+[    5394ms] [WARNING] [GSI_LOGGER]: google.accounts.id.initialize() is called multiple times. This could cause unexpected behavior and only the last initialized instance will be used. @ https://static.leadconnectorhq.com/1319/js/chunk.C1si3Vuy.js:16
+[    5419ms] [ERROR] Only one navigator.credentials.get request may be outstanding at one time. @ https://app.gohighlevel.com/:0
+[    5421ms] [ERROR] [GSI_LOGGER]: FedCM get() rejects with NotAllowedError: Only one navigator.credentials.get request may be outstanding at one time. @ https://static.leadconnectorhq.com/1319/js/chunk.C1si3Vuy.js:16
+[   14012ms] [ERROR] [GSI_LOGGER]: FedCM get() rejects with NetworkError: Error retrieving a token. @ https://static.leadconnectorhq.com/1319/js/chunk.C1si3Vuy.js:16

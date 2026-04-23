@@ -1,6 +1,6 @@
-# RG Backend
+# iron-setter
 
-BookMyLeads backend-only runtime for the AI lead recovery system.
+AI SMS reply agent for Iron Automations (formerly `rg-backend` / `setter`).
 
 This repo runs:
 - inbound conversation handling through the text engine
@@ -19,7 +19,7 @@ This repo is set up for the backend-only handoff flow where a single Supabase pr
 6. Set `AZURE_OPENAI_API_KEY` and keep `AZURE_OPENAI_MODEL=gpt-4.1` unless you have a reason to override it.
 7. Render or adapt the bootstrap SQL for your chosen schemas, then run the result in the Supabase SQL editor.
 8. Create an initial tenant, then create an entity and chat-history table with the generated helper function.
-9. Seed `entities.system_config` from [STARTER_SYSTEM_CONFIG_TEMPLATE.json](/home/jay/rg-backend/STARTER_SYSTEM_CONFIG_TEMPLATE.json:1).
+9. Seed `entities.system_config` from [STARTER_SYSTEM_CONFIG_TEMPLATE.json](/home/jay/iron-setter/STARTER_SYSTEM_CONFIG_TEMPLATE.json:1).
 10. Run `make doctor` to validate the handoff files and `.env`.
 11. Run `make doctor-online` after the real values are in place.
 12. Start the stack with `docker compose up --build`.
@@ -27,17 +27,17 @@ Default local host port is `8001`; override with `RG_BACKEND_PORT=...` if needed
 
 ## Key Files
 
-- [CLAUDE_CODE_MASTER_BACKEND_HANDOFF.md](/home/jay/rg-backend/CLAUDE_CODE_MASTER_BACKEND_HANDOFF.md:1): backend-only operator handoff and code-reading order
-- [BACKEND_ONLY_ONE_PROJECT_BOOTSTRAP.sql](/home/jay/rg-backend/BACKEND_ONLY_ONE_PROJECT_BOOTSTRAP.sql:1): required schema, helpers, storage bucket, RPC, and KB trigger for the one-project setup
-- [STARTER_SYSTEM_CONFIG_TEMPLATE.json](/home/jay/rg-backend/STARTER_SYSTEM_CONFIG_TEMPLATE.json:1): starter `entities.system_config` payload
-- [scripts/doctor.py](/home/jay/rg-backend/scripts/doctor.py:1): validates `.env`, bootstrap assets, one-project assumptions, and optional online/runtime checks
-- [scripts/bootstrap_entity.sql](/home/jay/rg-backend/scripts/bootstrap_entity.sql:1): minimal seed example for a fresh tenant + entity
-- [scripts/render_bootstrap_sql.py](/home/jay/rg-backend/scripts/render_bootstrap_sql.py:1): renders schema-aware bootstrap SQL for shared Supabase deployments
-- [scripts/render_seed_sql.py](/home/jay/rg-backend/scripts/render_seed_sql.py:1): renders full tenant/entity/system-config seed SQL from the starter JSON
-- [scripts/tunnel_shared_db.sh](/home/jay/rg-backend/scripts/tunnel_shared_db.sh:1): opens a local SSH tunnel to the shared Supabase DB so Docker on this machine can reach it via `host.docker.internal:65432`
-- [app/main.py](/home/jay/rg-backend/app/main.py:1): HTTP routes and app startup
-- [app/services/supabase_client.py](/home/jay/rg-backend/app/services/supabase_client.py:1): main/chat REST client behavior
-- [app/services/postgres_client.py](/home/jay/rg-backend/app/services/postgres_client.py:1): direct SQL for chat history, attachments, and tool logs
+- [CLAUDE_CODE_MASTER_BACKEND_HANDOFF.md](/home/jay/iron-setter/CLAUDE_CODE_MASTER_BACKEND_HANDOFF.md:1): backend-only operator handoff and code-reading order
+- [BACKEND_ONLY_ONE_PROJECT_BOOTSTRAP.sql](/home/jay/iron-setter/BACKEND_ONLY_ONE_PROJECT_BOOTSTRAP.sql:1): required schema, helpers, storage bucket, RPC, and KB trigger for the one-project setup
+- [STARTER_SYSTEM_CONFIG_TEMPLATE.json](/home/jay/iron-setter/STARTER_SYSTEM_CONFIG_TEMPLATE.json:1): starter `entities.system_config` payload
+- [scripts/doctor.py](/home/jay/iron-setter/scripts/doctor.py:1): validates `.env`, bootstrap assets, one-project assumptions, and optional online/runtime checks
+- [scripts/bootstrap_entity.sql](/home/jay/iron-setter/scripts/bootstrap_entity.sql:1): minimal seed example for a fresh tenant + entity
+- [scripts/render_bootstrap_sql.py](/home/jay/iron-setter/scripts/render_bootstrap_sql.py:1): renders schema-aware bootstrap SQL for shared Supabase deployments
+- [scripts/render_seed_sql.py](/home/jay/iron-setter/scripts/render_seed_sql.py:1): renders full tenant/entity/system-config seed SQL from the starter JSON
+- [scripts/tunnel_shared_db.sh](/home/jay/iron-setter/scripts/tunnel_shared_db.sh:1): opens a local SSH tunnel to the shared Supabase DB so Docker on this machine can reach it via `host.docker.internal:65432`
+- [app/main.py](/home/jay/iron-setter/app/main.py:1): HTTP routes and app startup
+- [app/services/supabase_client.py](/home/jay/iron-setter/app/services/supabase_client.py:1): main/chat REST client behavior
+- [app/services/postgres_client.py](/home/jay/iron-setter/app/services/postgres_client.py:1): direct SQL for chat history, attachments, and tool logs
 
 ## Repo Layout
 
