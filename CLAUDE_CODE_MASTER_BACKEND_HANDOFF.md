@@ -1,12 +1,12 @@
 # Claude Code Master Backend Handoff
 
-This is the backend-only source of truth for handing `rg-backend` to another operator using Claude Code.
+This is the backend-only source of truth for handing `iron-setter` to another operator using Claude Code.
 
 > Repo snapshot note: this clone does not include every guide path referenced later in this document. If a listed guide file is missing, use this handoff file, the bootstrap SQL, the starter system-config JSON, and the live code in `app/` as the source of truth.
 
 Assumptions for this handoff:
 
-- He already has the `rg-backend` repository.
+- He already has the `iron-setter` repository.
 - He is not using the frontend at all.
 - He is using one Supabase project, not separate Main and Chat projects.
 - Claude Code will be the primary coding/operator agent.
@@ -16,7 +16,7 @@ This file is written to be directly useful to Claude Code.
 
 ## 1. What This Repo Actually Is
 
-`rg-backend` is the operational brain of the system.
+`iron-setter` is the operational brain of the system.
 
 It does 3 main jobs:
 
@@ -143,11 +143,11 @@ The repo logically separates "main" and "chat", but it does not require separate
 
 Bootstrap SQL for this setup lives at:
 
-- `rg-backend/BACKEND_ONLY_ONE_PROJECT_BOOTSTRAP.sql`
+- `iron-setter/BACKEND_ONLY_ONE_PROJECT_BOOTSTRAP.sql`
 
 Starter `system_config` JSON lives at:
 
-- `rg-backend/STARTER_SYSTEM_CONFIG_TEMPLATE.json`
+- `iron-setter/STARTER_SYSTEM_CONFIG_TEMPLATE.json`
 
 ## 5. Required Environment Variables
 
@@ -374,7 +374,7 @@ If Claude is dropped into this repo with no outside context, this is the exact o
 
 ### Step 1: create `.env`
 
-Use `rg-backend/.env.example` as the starting point.
+Use `iron-setter/.env.example` as the starting point.
 
 For the one-project setup:
 
@@ -386,7 +386,7 @@ For the one-project setup:
 
 Run:
 
-- `rg-backend/BACKEND_ONLY_ONE_PROJECT_BOOTSTRAP.sql`
+- `iron-setter/BACKEND_ONLY_ONE_PROJECT_BOOTSTRAP.sql`
 
 This creates:
 
@@ -488,7 +488,7 @@ Example `business_schedule`:
 
 Start from:
 
-- `rg-backend/STARTER_SYSTEM_CONFIG_TEMPLATE.json`
+- `iron-setter/STARTER_SYSTEM_CONFIG_TEMPLATE.json`
 
 Claude should:
 
@@ -524,9 +524,9 @@ If these are not set:
 Local Docker path:
 
 ```powershell
-cd rg-backend
+cd iron-setter
 docker compose up -d
-docker compose logs -f rg-backend
+docker compose logs -f iron-setter
 ```
 
 ### Step 10: smoke test
@@ -780,9 +780,9 @@ For outreach:
 Useful local commands:
 
 ```powershell
-cd rg-backend
+cd iron-setter
 docker compose up -d
-docker compose logs -f rg-backend
+docker compose logs -f iron-setter
 ```
 
 ### How to prompt Claude Code for real backend-only testing

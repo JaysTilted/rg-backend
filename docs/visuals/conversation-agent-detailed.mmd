@@ -1,0 +1,76 @@
+flowchart TD
+    W1["POST /webhook/reply<br/>or /webhook/{entity_ref}/reply"] --> W2["Resolve entity + config"]
+    W2 --> W3["debounce_inbound()<br/>reset timer, cancel running work,<br/>cancel pending follow-ups and outreach"]
+    W3 --> W4["Return accepted immediately"]
+    W3 --> P0["text_engine() reply pipeline<br/>runs after debounce expires"]
+
+    subgraph Runtime_Flow["Runtime flow"]
+        P0 --> P1["load_data()<br/>fetch GHL contact + timezone<br/>get or create lead<br/>build prompts + media library<br/>compile system_config"]
+        P1 --> P2["sync_conversation()<br/>pull GHL messages into chat history"]
+        P2 --> P3["process_attachments()"]
+        P3 --> P4["build_timeline()<br/>unified conversation context"]
+        P4 --> P5["load_booking_context()<br/>+ ensure_opportunity()"]
+        P5 --> P6{"classification_gate()"}
+
+        P6 -- "dont_respond" --> E1["skip reply<br/>run extraction + post-processing only"]
+        P6 -- "human" --> E2["execute_transfer()"]
+        P6 -- "opt_out" --> E3["apply opt-out side effects"]
+        P6 -- "respond" --> P7["parallel pre-agent work<br/>extraction + qualification"]
+
+        P7 --> P8["select_reply_media()"]
+        P8 --> P9["call_agent()<br/>Azure/OpenRouter model<br/>tool loop up to 10 iterations"]
+        P9 --> P10["apply_security()"]
+        P10 --> P11["append AI response to timeline"]
+        P11 --> P12["reload booking context"]
+        P12 --> P13["post_agent_processing()<br/>follow-up + pipeline management"]
+        P13 --> P14["deliver_response()<br/>SMS/DM split send or threaded email<br/>store chat history after delivery"]
+        P14 --> P15["schedule follow-up chain<br/>+ reschedule reactivation"]
+    end
+
+    subgraph Tool_Loop["Reply-agent tool loop"]
+        T1["knowledge_base_search"] --> T7["Return tool result to model"]
+        T2["get_available_slots"] --> T7
+        T3["book_appointment"] --> T7
+        T4["update_appointment / cancel_appointment"] --> T7
+        T5["reanalyze_attachment"] --> T7
+        T6["transfer_to_human"] --> T8["Suppress agent reply"]
+    end
+
+    P9 -. "enabled_tools" .-> T1
+    P9 -. "enabled_tools" .-> T2
+    P9 -. "enabled_tools" .-> T3
+    P9 -. "enabled_tools" .-> T4
+    P9 -. "enabled_tools" .-> T5
+    P9 -. "enabled_tools" .-> T6
+
+    subgraph Current_Config["Current configured snapshot from STARTER_SYSTEM_CONFIG_TEMPLATE.json"]
+        C1["Default setter<br/>setter_1 = Main Setter"]
+        C2["Persona<br/>Alex, appointment coordinator<br/>English only"]
+        C3["Reply behavior<br/>proactive booking<br/>direct pricing<br/>max 1 question<br/>keep moving forward"]
+        C4["Booking<br/>booking_method = conversational<br/>booking_window_days = 10"]
+        C5["Conversation timing<br/>reply_window = 24/7<br/>debounce_window_seconds = 90"]
+        C6["Human safety<br/>pause_bot_on_human_activity = true<br/>human_takeover_minutes = 15"]
+        C7["Follow-up<br/>AI-generated cadence<br/>6h, 21h, 1d, 2d, 3d, 6d<br/>10% jitter"]
+        C8["Extra automations<br/>missed_call_textback enabled<br/>auto_reactivation enabled at 45 days"]
+    end
+
+    P1 -. "compiled prompt + config" .-> C1
+    P1 -.-> C2
+    P1 -.-> C3
+    P1 -.-> C4
+    P1 -.-> C5
+    P1 -.-> C6
+    P1 -.-> C7
+    P1 -.-> C8
+
+    classDef ingress fill:#e8f0fe,stroke:#1a73e8,color:#174ea6,stroke-width:2px;
+    classDef runtime fill:#eef7ee,stroke:#137333,color:#0d652d,stroke-width:1.5px;
+    classDef branch fill:#fff7e6,stroke:#b26a00,color:#7a4b00,stroke-width:1.5px;
+    classDef tool fill:#f3e8ff,stroke:#7c3aed,color:#4c1d95,stroke-width:1.5px;
+    classDef config fill:#fce8e6,stroke:#c5221f,color:#8b1e1e,stroke-width:1.5px;
+
+    class W1,W2,W3,W4 ingress;
+    class P0,P1,P2,P3,P4,P5,P7,P8,P9,P10,P11,P12,P13,P14,P15 runtime;
+    class P6,E1,E2,E3 branch;
+    class T1,T2,T3,T4,T5,T6,T7,T8 tool;
+    class C1,C2,C3,C4,C5,C6,C7,C8 config;

@@ -3,7 +3,7 @@
 Each scenario has a realistic conversation with specific details the model should
 reference. Output is formatted for easy manual review.
 
-Usage: docker compose exec rg-backend python -m app.test_phase4_wide
+Usage: docker compose exec iron-setter python -m app.test_phase4_wide
 """
 
 import asyncio

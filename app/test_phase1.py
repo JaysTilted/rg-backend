@@ -4,7 +4,7 @@ Tests _match_service_for_position across diverse fake business scenarios.
 Each scenario has a lead conversation + services list + expected correct service.
 We check if the matcher picks the RIGHT service (not the cheapest irrelevant one).
 
-Usage: docker compose exec rg-backend python -m app.test_phase1
+Usage: docker compose exec iron-setter python -m app.test_phase1
 """
 
 import asyncio

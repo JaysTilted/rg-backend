@@ -3,7 +3,7 @@
 Runs all 3 scenarios on each model and outputs messages for manual review.
 Also tracks cost per lead.
 
-Usage: docker compose exec rg-backend python -m app.test_phase3
+Usage: docker compose exec iron-setter python -m app.test_phase3
 """
 
 import asyncio

@@ -1,7 +1,7 @@
 """Test service clients against real data (read-only).
 
-Run inside the rg-backend container:
-  docker exec rg-backend-rg-backend-1 python /app/test_services.py
+Run inside the iron-setter container:
+  docker exec iron-setter-iron-setter-1 python /app/test_services.py
 """
 
 import asyncio

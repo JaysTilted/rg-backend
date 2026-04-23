@@ -1363,7 +1363,7 @@ async def run_followup(ctx: PipelineContext) -> dict[str, Any]:
                     _sc = _json.loads(_sc)
                 except (ValueError, TypeError):
                     _sc = {}
-            _provider = _sc.get("sms_provider", "signalhouse")
+            _provider = _sc.get("sms_provider", "telnyx")
             needs_text = (_provider == "imessage") and _is_imessage_channel
 
         logger.info("FOLLOWUP | media_resolved | type=%s | url=%s | needs_text=%s",

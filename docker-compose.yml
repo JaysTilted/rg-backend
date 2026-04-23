@@ -1,5 +1,5 @@
 services:
-  rg-backend:
+  iron-setter:
     build: .
     expose:
       - "8000"

@@ -1,0 +1,48 @@
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontSize": "40px",
+    "fontFamily": "Inter, Arial, sans-serif",
+    "primaryTextColor": "#0f172a",
+    "lineColor": "#334155",
+    "primaryBorderColor": "#0f172a",
+    "clusterBkg": "#f8fafc",
+    "clusterBorder": "#cbd5e1"
+  },
+  "flowchart": {
+    "nodeSpacing": 65,
+    "rankSpacing": 90,
+    "curve": "linear"
+  }
+}}%%
+flowchart TB
+    W["Inbound webhook"] --> D["Debounce"]
+    D --> C["Load context"]
+    C --> T["Build conversation context"]
+    T --> G{"Classification"}
+
+    G -->|No reply| N["No reply path"]
+    G -->|Human / opt-out| H["Human or opt-out path"]
+    G -->|Respond| A["Reply agent"]
+
+    A --> L["Agent loop"]
+    L --> S["Security + post-process"]
+    S --> O["Delivery + scheduling"]
+
+    CFG["Current behavior<br/>Alex persona<br/>conversational booking<br/>24/7 replies<br/>90 second debounce"]
+    TOOL["Core tools<br/>knowledge base<br/>booking<br/>attachments<br/>transfer"]
+
+    A -. uses .-> TOOL
+    C -. config .-> CFG
+
+    classDef ingress fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a,stroke-width:3px;
+    classDef flow fill:#dcfce7,stroke:#166534,color:#14532d,stroke-width:2px;
+    classDef gate fill:#fef3c7,stroke:#b45309,color:#78350f,stroke-width:2px;
+    classDef brain fill:#ede9fe,stroke:#6d28d9,color:#4c1d95,stroke-width:2px;
+    classDef config fill:#fee2e2,stroke:#b91c1c,color:#7f1d1d,stroke-width:2px;
+
+    class W,D ingress;
+    class C,T,N,H,S,O flow;
+    class G gate;
+    class A,L,TOOL brain;
+    class CFG config;

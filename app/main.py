@@ -26,7 +26,6 @@ from app.services.mattermost import notify_error
 from app.services.supabase_client import supabase
 from app.services.postgres_client import postgres
 from app.services.ghl_client import start_ghl_pool, stop_ghl_pool
-from app.services.signal_house_client import start_signal_house_pool, stop_signal_house_pool
 from app.services.ai_client import start_ai_clients
 from app.config import settings
 from app.workflows.log_cleanup import run_cleanup_loop
@@ -209,7 +208,6 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("Postgres pools failed to connect (will retry on first use): %s", e)
     await start_ghl_pool()
-    await start_signal_house_pool()
     start_ai_clients()
     # Load default AI models from Supabase (cached with 5-min TTL)
     from app.text_engine.model_resolver import refresh_defaults_if_stale
@@ -233,7 +231,6 @@ async def lifespan(app: FastAPI):
     await supabase.stop()
     await postgres.stop()
     await stop_ghl_pool()
-    await stop_signal_house_pool()
 
 
 app = FastAPI(title="Text Engine", version="0.1.0", lifespan=lifespan, dependencies=[Depends(verify_auth)])

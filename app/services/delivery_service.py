@@ -34,7 +34,6 @@ class DeliveryResult:
     status: str = "unknown"  # delivered, failed, timeout, sent, skipped
     provider: str = "unknown"
     error_message: str | None = None
-    signal_house_sid: str | None = None
     carrier: str | None = None
 
 
@@ -65,7 +64,7 @@ class DeliveryService:
                 sc = json.loads(sc)
             except (json.JSONDecodeError, TypeError):
                 sc = {}
-        self.sms_provider: str = sc.get("sms_provider", "signalhouse")
+        self.sms_provider: str = sc.get("sms_provider", "telnyx")
         self.business_phone: str = config.get("business_phone", "") or ""
         self.entity_id: str = config.get("id", "")
         self._polling_disabled: bool = False
@@ -115,7 +114,8 @@ class DeliveryService:
         ghl_message_id = ghl_result.get("messageId")
 
         # 2. No-poll providers: random delay between splits (human impersonation)
-        if self.sms_provider in ("imessage", "other"):
+        # telnyx uses async delivery status via iron-bridge's webhook (no sync poll needed)
+        if self.sms_provider in ("telnyx", "imessage", "other"):
             await asyncio.sleep(random.uniform(3.0, 8.0))
             return DeliveryResult(
                 ghl_message_id=ghl_message_id, status="sent", provider=self.sms_provider,
@@ -141,7 +141,6 @@ class DeliveryService:
                 ghl_message_id=ghl_message_id,
                 status="delivered",
                 provider=self.sms_provider,
-                signal_house_sid=poll_result.signal_house_sid,
                 carrier=poll_result.carrier,
             )
 
@@ -173,7 +172,6 @@ class DeliveryService:
             status=retry_result.status or "failed",
             error_message=retry_result.error_message or poll_result.error_message,
             ghl_message_id=retry_result.ghl_message_id or ghl_message_id,
-            signal_house_sid=poll_result.signal_house_sid,
             carrier=poll_result.carrier,
             to_phone=to_phone, from_phone=self.business_phone,
             message_body=message, retry_attempted=True,
@@ -185,7 +183,6 @@ class DeliveryService:
             status="failed",
             provider=self.sms_provider,
             error_message=retry_result.error_message or poll_result.error_message,
-            signal_house_sid=poll_result.signal_house_sid,
             carrier=poll_result.carrier,
         )
 
@@ -253,47 +250,16 @@ class DeliveryService:
         message_body: str,
         send_time: datetime,
     ) -> DeliveryResult:
-        """Route to provider-specific polling."""
-        if self.sms_provider == "signalhouse":
-            return await self._poll_signalhouse(to_phone, message_body, send_time)
+        """Route to provider-specific polling.
+
+        Post-Telnyx cutover (2026-04-23): signalhouse polling removed.
+        Delivery status for telnyx-routed sends is written asynchronously
+        by iron-bridge to sms.messages.provider_status.
+        """
         if self.sms_provider == "ghl_default":
             return await self._poll_ghl(ghl_message_id)
         # Unknown provider — treat as no-poll
         return DeliveryResult(status="sent", provider=self.sms_provider)
-
-    async def _poll_signalhouse(
-        self,
-        to_phone: str | None,
-        message_body: str,
-        send_time: datetime,
-    ) -> DeliveryResult:
-        """Poll Signal House /message/logs for delivery status."""
-        if not to_phone or not self.business_phone:
-            logger.warning("DELIVERY | SH poll skipped — missing phone | from=%s to=%s", self.business_phone, to_phone)
-            return DeliveryResult(status="timeout", provider="signalhouse")
-
-        from app.config import settings
-        from app.services.signal_house_client import SignalHouseClient
-
-        if not settings.signal_house_api_key or not settings.signal_house_auth_token:
-            logger.warning("DELIVERY | SH credentials not configured — skipping poll")
-            return DeliveryResult(status="timeout", provider="signalhouse")
-
-        sh = SignalHouseClient(settings.signal_house_api_key, settings.signal_house_auth_token)
-        sh_result = await sh.check_delivery(
-            from_phone=self.business_phone,
-            to_phone=to_phone,
-            message_body=message_body,
-            start_time=send_time,
-        )
-
-        return DeliveryResult(
-            status=sh_result.status,
-            provider="signalhouse",
-            signal_house_sid=sh_result.signal_house_sid,
-            error_message=sh_result.failure_message,
-            carrier=sh_result.carrier,
-        )
 
     async def _poll_ghl(self, message_id: str | None) -> DeliveryResult:
         """Poll GHL GET /conversations/messages/{id} for delivery status."""
@@ -375,7 +341,6 @@ class DeliveryService:
             status=poll_result.status,
             provider=self.sms_provider,
             error_message=poll_result.error_message,
-            signal_house_sid=poll_result.signal_house_sid,
             carrier=poll_result.carrier,
         )
 
@@ -390,7 +355,6 @@ class DeliveryService:
         status: str,
         error_message: str | None = None,
         ghl_message_id: str | None = None,
-        signal_house_sid: str | None = None,
         carrier: str | None = None,
         to_phone: str | None = None,
         from_phone: str | None = None,
@@ -409,7 +373,6 @@ class DeliveryService:
                     "message_type": message_type,
                     "sms_provider": self.sms_provider,
                     "ghl_message_id": ghl_message_id,
-                    "signal_house_sid": signal_house_sid,
                     "status": status,
                     "error_message": (error_message or "")[:500],
                     "carrier": carrier,

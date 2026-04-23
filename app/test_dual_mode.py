@@ -3,7 +3,7 @@
 Tests both modes across 8 industries, 3 runs each for consistency.
 Outputs formatted for manual review — no automated pass/fail.
 
-Usage: docker compose exec rg-backend python -m app.test_dual_mode
+Usage: docker compose exec iron-setter python -m app.test_dual_mode
 """
 
 import asyncio

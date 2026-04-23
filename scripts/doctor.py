@@ -84,7 +84,7 @@ class Issue:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Validate rg-backend setup.")
+    parser = argparse.ArgumentParser(description="Validate iron-setter setup.")
     parser.add_argument(
         "--online",
         action="store_true",
@@ -231,7 +231,7 @@ def check_online(values: dict[str, str]) -> list[Issue]:
                 "curl",
                 "-sS",
                 "-o",
-                "/tmp/rg_backend_doctor_rest.out",
+                "/tmp/iron_setter_doctor_rest.out",
                 "-w",
                 "%{http_code}",
                 "-H",
@@ -253,7 +253,7 @@ def check_online(values: dict[str, str]) -> list[Issue]:
         else:
             status_code = int((result.stdout or "0").strip() or "0")
             if status_code != 200:
-                body = Path("/tmp/rg_backend_doctor_rest.out").read_text(encoding="utf-8", errors="ignore")[:300]
+                body = Path("/tmp/iron_setter_doctor_rest.out").read_text(encoding="utf-8", errors="ignore")[:300]
                 issues.append(Issue("error", f"Supabase REST probe failed with HTTP {status_code}: {body}"))
     except Exception as exc:
         issues.append(Issue("error", f"Supabase REST probe failed: {exc}"))
