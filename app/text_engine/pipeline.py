@@ -912,11 +912,43 @@ async def ensure_opportunity(ctx: PipelineContext) -> None:
                 return
 
         # 4. Auto-reengage: lead replied from a negative stage → move to "engaged"
+        #
+        # Audit-fix 2026-04-24: previously this fired on ANY reply from a
+        # Not Interested / Opt Out lead, which is wrong — a soft "thanks
+        # have a good weekend" after a hard-decline ("I'm retiring next
+        # year") was enough to drag the opp back to Engaged and restart
+        # the sales push. Now gated on:
+        #   * no DNC-ish tags on the contact (stop bot / opt-out / tcpa-risk)
+        #   * the classifier_gate didn't say stop_bot
+        # which matches our "reply intent must be positive, not just any
+        # text" semantics. WeatherTite / Chris Blake was the trigger bug.
         negative_stages = {"opt_out", "not_interested", "wrong_number", "not_qualified"}
         if ctx.current_pipeline_stage in negative_stages:
-            if "engaged" in ctx.pipeline_name_to_id:
+            dnc_tags = {
+                "stop bot", "opt-out", "opt_out",
+                "do-not-contact", "do_not_contact",
+                "tcpa-risk", "tcpa_risk", "tcpa-threat",
+                "replied-do-not-contact", "replied-not-interested",
+            }
+            contact_tags_lower = {
+                (t or "").strip().lower() for t in (ctx.contact_tags or [])
+            }
+            has_dnc_tag = bool(dnc_tags & contact_tags_lower)
+            gates = ctx.classification_gates or []
+            stopped_gate = any(
+                str(g or "").lower() == "stop_bot" for g in gates
+            )
+
+            if has_dnc_tag or stopped_gate:
+                logger.info(
+                    "Skip auto-reengage: DNC signal present "
+                    "(stage=%s, dnc_tag_hit=%s, stop_gate=%s)",
+                    ctx.current_pipeline_stage, has_dnc_tag, stopped_gate,
+                )
+            elif "engaged" in ctx.pipeline_name_to_id:
                 await ghl.update_opportunity(
-                    ctx.opportunity_id, {"pipelineStageId": ctx.pipeline_name_to_id["engaged"]}
+                    ctx.opportunity_id,
+                    {"pipelineStageId": ctx.pipeline_name_to_id["engaged"]},
                 )
                 logger.info("Auto-reengaged: %s → engaged", ctx.current_pipeline_stage)
                 ctx.current_pipeline_stage = "engaged"
