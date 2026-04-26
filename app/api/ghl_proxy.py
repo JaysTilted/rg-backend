@@ -6,6 +6,7 @@ Used by the frontend Data Collection tab to list and create custom fields.
 """
 
 import logging
+from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
@@ -79,7 +80,7 @@ class CreateFieldRequest(BaseModel):
 
 
 async def _get_ghl_client(entity_id: str, is_bot: bool = False) -> GHLClient:
-    """Build a GHLClient from entity's stored credentials."""
+    """Build a GHLClient from entity credentials. OAuth preferred, PIT fallback."""
     try:
         row = await supabase.resolve_entity(entity_id)
     except ValueError:
@@ -88,14 +89,35 @@ async def _get_ghl_client(entity_id: str, is_bot: bool = False) -> GHLClient:
     if not row:
         raise HTTPException(status_code=404, detail=f"Entity {entity_id} not found")
 
-    api_key = row.get("ghl_api_key", "")
     location_id = row.get("ghl_location_id", "")
-    if not api_key or not location_id:
+    if not location_id:
         raise HTTPException(
             status_code=400,
-            detail="GHL not configured for this entity (missing api_key or location_id)",
+            detail="GHL not configured for this entity (missing location_id)",
         )
 
+    from app.marketplace.oauth_store import get_token_by_entity, update_tokens
+    install = await get_token_by_entity(entity_id)
+    if install and install.get("access_token"):
+        async def _persist_refresh(access: str, refresh: str, expires: datetime) -> None:
+            await update_tokens(
+                install["location_id"],
+                access_token=access, refresh_token=refresh, expires_at=expires,
+            )
+        return GHLClient(
+            location_id=location_id,
+            access_token=install["access_token"],
+            refresh_token=install.get("refresh_token", ""),
+            token_expires_at=install.get("expires_at"),
+            on_token_refresh=_persist_refresh,
+        )
+
+    api_key = row.get("ghl_api_key", "")
+    if not api_key:
+        raise HTTPException(
+            status_code=400,
+            detail="GHL not configured for this entity (no OAuth install and no api_key)",
+        )
     return GHLClient(api_key=api_key, location_id=location_id)
 
 

@@ -10,6 +10,8 @@ from app.config import settings
 _PUBLIC_PATHS: frozenset[str] = frozenset({
     "/health", "/portal/session", "/portal/verify", "/portal/change-request",
     "/ai/data-chat/portal-message",
+    "/oauth/ghl/install", "/oauth/ghl/callback",
+    "/marketplace/setup",
 })
 
 

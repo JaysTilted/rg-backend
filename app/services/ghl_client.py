@@ -1,8 +1,11 @@
 """GoHighLevel API client — async, with transient error retry.
 
-One GHLClient instance per request (since API key is per-client).
+One GHLClient instance per request (since auth is per-client).
 Uses a shared httpx.AsyncClient for connection pooling.
 Retries on 429 (rate limit), 500, 502, 503, 504, and timeouts.
+
+Supports both PIT API keys (legacy) and OAuth access tokens (Marketplace).
+When OAuth params are provided, auto-refreshes expired tokens before requests.
 """
 
 from __future__ import annotations
@@ -10,7 +13,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import Any
+from datetime import datetime, timedelta, timezone
+from typing import Any, Callable, Awaitable
 
 import httpx
 
@@ -39,25 +43,83 @@ async def stop_ghl_pool() -> None:
 
 
 class GHLClient:
-    """Per-request GHL API client. Wraps the shared connection pool with a client-specific API key.
+    """Per-request GHL API client. Wraps the shared connection pool with per-client auth.
 
-    Usage:
+    Dual-auth: OAuth access_token (preferred) or PIT api_key (legacy fallback).
+
+    Usage (PIT — existing entities):
         ghl = GHLClient(api_key="pit-xxx", location_id="abc123")
-        contact = await ghl.get_contact(contact_id)
+
+    Usage (OAuth — Marketplace installs):
+        ghl = GHLClient(
+            location_id="abc123",
+            access_token="oauth_token",
+            refresh_token="refresh_token",
+            token_expires_at=datetime(...),
+            on_token_refresh=async_save_callback,
+        )
     """
 
-    def __init__(self, api_key: str, location_id: str) -> None:
+    def __init__(
+        self,
+        api_key: str = "",
+        location_id: str = "",
+        *,
+        access_token: str = "",
+        refresh_token: str = "",
+        token_expires_at: datetime | None = None,
+        on_token_refresh: Callable[[str, str, datetime], Awaitable[None]] | None = None,
+    ) -> None:
         self.api_key = api_key
         self.location_id = location_id
+        self._access_token = access_token
+        self._refresh_token = refresh_token
+        self._token_expires_at = token_expires_at
+        self._on_token_refresh = on_token_refresh
+        self._is_oauth = bool(access_token)
+
+    def _bearer_token(self) -> str:
+        if self._is_oauth and self._access_token:
+            return self._access_token
+        return self.api_key
 
     def _headers(self, version: str = "2021-07-28") -> dict[str, str]:
         return {
-            "Authorization": f"Bearer {self.api_key}",
+            "Authorization": f"Bearer {self._bearer_token()}",
             "Version": version,
             "Content-Type": "application/json",
         }
 
     _RETRYABLE_STATUSES = {429, 500, 502, 503, 504}
+    _TOKEN_REFRESH_MARGIN = timedelta(minutes=5)
+
+    async def _ensure_fresh_token(self) -> None:
+        """Refresh OAuth access token if expired or close to expiry. No-op for PIT."""
+        if not self._is_oauth or not self._refresh_token:
+            return
+        if self._token_expires_at is None:
+            return
+
+        now = datetime.now(timezone.utc)
+        expires = self._token_expires_at
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+
+        if expires - self._TOKEN_REFRESH_MARGIN > now:
+            return
+
+        logger.info("GHL_CLIENT | refreshing OAuth token | location=%s", self.location_id)
+        from app.marketplace.token_refresh import _refresh_token
+        refreshed = await _refresh_token(self._refresh_token)
+        self._access_token = refreshed["access_token"]
+        self._refresh_token = refreshed.get("refresh_token", self._refresh_token)
+        new_expires_in = int(refreshed.get("expires_in", 86400))
+        self._token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=new_expires_in)
+
+        if self._on_token_refresh:
+            await self._on_token_refresh(
+                self._access_token, self._refresh_token, self._token_expires_at,
+            )
 
     async def _request(
         self,
@@ -73,6 +135,8 @@ class GHLClient:
         Retries on: 429, 500, 502, 503, 504 status codes and timeouts.
         Uses exponential backoff (2^attempt seconds).
         """
+        await self._ensure_fresh_token()
+
         t0 = time.perf_counter()
         last_resp = None
         for attempt in range(retries):
