@@ -42,6 +42,7 @@ from app.api.token_map import router as token_map_router
 from app.api.ghl_proxy import router as ghl_proxy_router
 from app.routers.data_chat import data_chat_router
 from app.marketplace.oauth import router as marketplace_oauth_router
+from app.marketplace.setup_api import router as marketplace_setup_router
 
 # Configure structured JSON logging before anything else
 setup_logging()
@@ -246,6 +247,8 @@ app.add_middleware(
         "https://app.ironautomations.com",
         "https://app.bookmyleads.ai",
         "https://app.refinedgrowth.net",
+        "https://setup.ironops.xyz",
+        "https://setup.23.88.127.9.sslip.io",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -258,6 +261,7 @@ app.include_router(token_map_router)
 app.include_router(ghl_proxy_router)
 app.include_router(data_chat_router)
 app.include_router(marketplace_oauth_router)
+app.include_router(marketplace_setup_router)
 
 
 @app.exception_handler(MissingTenantAIKeyError)

@@ -262,6 +262,45 @@ class GHLClient:
         logger.info("GHL_API | list_tags | location=%s | count=%d", self.location_id, len(tags))
         return tags
 
+    async def create_location_tag(self, name: str) -> dict[str, str]:
+        """Create a tag in the GHL location. Returns {id, name}."""
+        resp = await self._request(
+            "POST", f"/locations/{self.location_id}/tags",
+            json_data={"name": name},
+            version="2021-07-28",
+        )
+        tag_data = resp.json()
+        logger.info("GHL_API | create_tag | location=%s | name=%s", self.location_id, name)
+        return tag_data.get("tag", tag_data)
+
+    async def create_pipeline(
+        self, name: str, stages: list[str]
+    ) -> dict[str, Any]:
+        """Create a pipeline with named stages. Returns pipeline object."""
+        resp = await self._request(
+            "POST", "/opportunities/pipelines",
+            json_data={
+                "locationId": self.location_id,
+                "name": name,
+                "stages": [{"name": s} for s in stages],
+            },
+        )
+        pipeline = resp.json().get("pipeline", resp.json())
+        logger.info("GHL_API | create_pipeline | name=%s | stages=%d", name, len(stages))
+        return pipeline
+
+    async def get_location_users(self) -> list[dict[str, Any]]:
+        """Get users for the location (for assigned-to dropdowns)."""
+        resp = await self._request(
+            "GET", f"/locations/{self.location_id}/members",
+            version="2021-07-28",
+        )
+        # Response is {"members": [...]} or {"users": [...]}
+        data = resp.json()
+        users = data.get("members", data.get("users", []))
+        logger.info("GHL_API | get_users | location=%s | count=%d", self.location_id, len(users))
+        return users
+
     async def add_tag(self, contact_id: str, tag: str) -> None:
         """Add a tag to a contact."""
         await self._request(

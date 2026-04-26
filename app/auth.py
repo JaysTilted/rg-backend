@@ -51,6 +51,8 @@ async def verify_auth(request: Request = None, websocket: WebSocket = None) -> N
     path = request.url.path
     if path in _PUBLIC_PATHS:
         return
+    if path.startswith("/api/marketplace/"):
+        return
 
     if not settings.api_auth_token:
         return
