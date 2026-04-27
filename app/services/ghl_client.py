@@ -179,11 +179,20 @@ class GHLClient:
             return resp
 
         elapsed_ms = int((time.perf_counter() - t0) * 1000)
-        logger.warning(
+        last_status = last_resp.status_code if last_resp else 0
+        logger.error(
             "GHL_HTTP | %s %s | retries exhausted (last=%d) | elapsed_ms=%d",
-            method, path, last_resp.status_code if last_resp else 0, elapsed_ms,
+            method, path, last_status, elapsed_ms,
         )
-        return last_resp
+        if last_resp is not None:
+            if last_status in self._RETRYABLE_STATUSES:
+                raise httpx.HTTPStatusError(
+                    f"GHL API {method} {path} failed after {retries} retries (status={last_status})",
+                    request=last_resp.request,
+                    response=last_resp,
+                )
+            return last_resp
+        raise httpx.TimeoutException(f"GHL API {method} {path} — no response after {retries} retries")
 
     # =========================================================================
     # LOCATION
@@ -437,6 +446,12 @@ class GHLClient:
             version="2021-04-15",
             params={"contactId": contact_id},
         )
+        if resp.status_code >= 400:
+            logger.error(
+                "GHL_API | get_conversation_messages | contact=%s | search_failed | status=%d",
+                contact_id, resp.status_code,
+            )
+            raise RuntimeError(f"GHL conversation search failed (status={resp.status_code})")
         conversations = resp.json().get("conversations", [])
         if not conversations:
             logger.info("GHL_API | get_conversation_messages | contact=%s | no_conversation_found", contact_id)
@@ -458,6 +473,12 @@ class GHLClient:
                 "GET", f"/conversations/{conversation_id}/messages",
                 version="2021-04-15", params=params,
             )
+            if resp.status_code >= 400:
+                logger.error(
+                    "GHL_API | get_conversation_messages | contact=%s | messages_failed | status=%d",
+                    contact_id, resp.status_code,
+                )
+                break
             msg_data = resp.json().get("messages", {})
             messages = msg_data.get("messages", [])
 
