@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from app.services.ghl_client import GHLClient
@@ -32,8 +33,15 @@ from app.text_engine.conversation_sync import run_conversation_sync
 logger = logging.getLogger(__name__)
 
 POLL_INTERVAL_SECONDS = 300
-ACTIVE_WINDOW_DAYS = 2
+ACTIVE_WINDOW_DAYS = 2  # bootstrap fallback only (first run / process restart)
+WATERMARK_SAFETY_BUFFER_MINUTES = 30  # see ~/.claude/memory/reference_watermark_sync_pattern.md
 STARTUP_GRACE_SECONDS = 45
+
+# In-memory per-entity watermark — the latest `timestamp` we've successfully
+# polled. Resets on process restart, which is fine — bootstrap takes over.
+# 2026-04-28 audit-loop: replaces the prior 2-day rolling-window candidate query
+# that re-fetched all 48-hour-active contacts every 5 min regardless of change.
+_ENTITY_WATERMARKS: dict[str, datetime] = {}
 # Only trigger the reply pipeline for inbound messages detected within this
 # window. Older inbound is still logged + dedupe'd, but we don't wake Scott
 # up on week-old conversations that were never manually answered.
@@ -68,15 +76,56 @@ async def _list_active_entities() -> list[dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
-async def _active_contacts_for_table(chat_table: str, days: int) -> list[str]:
-    """Distinct session_ids (= GHL contact IDs) with any row in the last N days."""
+async def _active_contacts_for_table(
+    chat_table: str,
+    entity_id: str,
+    bootstrap_days: int,
+) -> tuple[list[str], datetime | None]:
+    """Distinct session_ids (= GHL contact IDs) with chat-table activity since
+    the last successful poll for *entity_id*.
+
+    Watermark behavior (2026-04-28 audit-loop fix):
+        * If we have a previous watermark for this entity, use
+          ``watermark - 30min`` as the cutoff. Steady-state polls every 5
+          minutes only see contacts that actually had new activity since
+          the previous pass, plus a 30-min safety buffer for race conditions.
+        * If no watermark yet (first run after process start), fall back to
+          ``NOW() - bootstrap_days`` as the cutoff. This rebuilds the
+          candidate set after restarts without losing coverage.
+
+    Returns ``(contact_ids, latest_timestamp_seen)``. Caller persists the
+    latest timestamp via ``_ENTITY_WATERMARKS`` AFTER the pass succeeds, so
+    a mid-pass crash doesn't skip rows on the retry.
+    """
     assert postgres.chat_pool is not None, "postgres.chat_pool not initialized"
+
+    watermark = _ENTITY_WATERMARKS.get(entity_id)
+    if watermark is None:
+        cutoff_clause = f"NOW() - INTERVAL '{int(bootstrap_days)} days'"
+        params: list[Any] = []
+    else:
+        cutoff = watermark - timedelta(minutes=WATERMARK_SAFETY_BUFFER_MINUTES)
+        cutoff_clause = "$1::timestamptz"
+        params = [cutoff]
+
     rows = await postgres.chat_pool.fetch(
-        f'SELECT DISTINCT session_id FROM "{chat_table}" '
-        f'WHERE "timestamp" > NOW() - INTERVAL \'{int(days)} days\' '
-        f"AND session_id IS NOT NULL AND session_id <> ''"
+        f'SELECT session_id, "timestamp" FROM "{chat_table}" '
+        f'WHERE "timestamp" > {cutoff_clause} '
+        f"AND session_id IS NOT NULL AND session_id <> ''",
+        *params,
     )
-    return [r["session_id"] for r in rows]
+    seen: set[str] = set()
+    contacts: list[str] = []
+    latest_ts: datetime | None = None
+    for r in rows:
+        sid = r["session_id"]
+        if sid not in seen:
+            seen.add(sid)
+            contacts.append(sid)
+        ts = r["timestamp"]
+        if ts is not None and (latest_ts is None or ts > latest_ts):
+            latest_ts = ts
+    return contacts, latest_ts
 
 
 async def _existing_ghl_ids(chat_table: str, contact_id: str) -> set[str]:
@@ -256,7 +305,9 @@ async def _sync_one_entity(entity: dict[str, Any]) -> None:
     #      before any chat-history row existed.
     contact_set: set[str] = set()
 
-    from_chat = await _active_contacts_for_table(chat_table, ACTIVE_WINDOW_DAYS)
+    from_chat, latest_chat_ts = await _active_contacts_for_table(
+        chat_table, entity_id, ACTIVE_WINDOW_DAYS
+    )
     contact_set.update(from_chat)
 
     from_ghl: list[str] = []

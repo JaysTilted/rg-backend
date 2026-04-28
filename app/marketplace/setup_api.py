@@ -32,22 +32,46 @@ router = APIRouter(prefix="/api/marketplace/setter", tags=["marketplace-setup"])
 # ---------------------------------------------------------------------------
 
 def _decode_setup_token(authorization: str) -> dict[str, Any]:
-    """Decode a setup JWT from the Authorization header.
+    """Decode + VERIFY a setup JWT from the Authorization header.
 
-    Minimal validation — the portal issued this token so we trust the
-    structure. We verify expiry and extract the location_id (sub).
+    Validates HMAC-SHA256 signature against ``settings.portal_jwt_secret``,
+    expiry, and `product == "setter"`. Anything that fails any check
+    returns 401 — never trust the payload structure alone.
+
+    2026-04-28: Added signature verification. Prior version only checked
+    expiry/product, allowing forged tokens with valid header+payload and
+    arbitrary signatures to pass — auth bypass for any location_id.
     """
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing Bearer token")
 
     token = authorization[7:]
+
+    from app.config import settings as _settings  # local import to avoid cycles
+    secret = getattr(_settings, "portal_jwt_secret", "")
+    if not secret:
+        raise HTTPException(status_code=500, detail="portal_jwt_secret not configured")
+
     try:
         import base64
+        import hashlib
+        import hmac
         parts = token.split(".")
         if len(parts) != 3:
             raise ValueError("bad format")
-        payload_b64 = parts[1] + "=" * (4 - len(parts[1]) % 4)
-        payload = json.loads(base64.urlsafe_b64decode(payload_b64))
+
+        h_b64, p_b64, s_b64 = parts
+
+        def _b64decode(seg: str) -> bytes:
+            return base64.urlsafe_b64decode(seg + "=" * (-len(seg) % 4))
+
+        # Verify signature first — fail closed before reading payload claims.
+        expected_sig = hmac.new(secret.encode(), f"{h_b64}.{p_b64}".encode(), hashlib.sha256).digest()
+        actual_sig = _b64decode(s_b64)
+        if not hmac.compare_digest(expected_sig, actual_sig):
+            raise HTTPException(status_code=401, detail="Invalid token signature")
+
+        payload = json.loads(_b64decode(p_b64))
 
         if payload.get("exp", 0) < datetime.now(timezone.utc).timestamp():
             raise HTTPException(status_code=401, detail="Token expired")
