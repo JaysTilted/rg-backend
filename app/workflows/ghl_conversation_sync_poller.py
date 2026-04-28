@@ -31,8 +31,8 @@ from app.text_engine.conversation_sync import run_conversation_sync
 
 logger = logging.getLogger(__name__)
 
-POLL_INTERVAL_SECONDS = 90
-ACTIVE_WINDOW_DAYS = 14
+POLL_INTERVAL_SECONDS = 300
+ACTIVE_WINDOW_DAYS = 2
 STARTUP_GRACE_SECONDS = 45
 # Only trigger the reply pipeline for inbound messages detected within this
 # window. Older inbound is still logged + dedupe'd, but we don't wake Scott
@@ -41,9 +41,11 @@ REPLY_TRIGGER_MAX_AGE_HOURS = 6
 # How many most-recent GHL conversations to scan on each pass. This covers
 # cold leads whose first reply may never have created a chat-history row
 # because the SH webhook was dropped. Union with rg_chat-active contacts.
-GHL_CONVERSATIONS_PER_PASS = 100
-# Small per-contact delay to avoid bursting GHL rate limits on large cohorts.
-PER_CONTACT_SLEEP_MS = 100
+GHL_CONVERSATIONS_PER_PASS = 50
+# Per-contact delay — at 700ms with ~150 contacts, a full pass takes ~105s,
+# leaving the rest of the 5-minute interval for actual webhook traffic.
+# GHL's per-location limit is ~10 req/s; we cap our poller at ~1.4 req/s.
+PER_CONTACT_SLEEP_MS = 700
 
 
 async def _list_active_entities() -> list[dict[str, Any]]:
