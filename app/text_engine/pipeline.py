@@ -994,6 +994,21 @@ async def reply_pipeline(ctx: PipelineContext) -> dict[str, Any]:
         await _ensure_inbound_stored(ctx)
         logger.info("PIPELINE | data_loaded | sync_done | pending_attachments=%d", len(ctx.pending_attachments))
 
+        if await _staff_manual_message_detected(ctx):
+            logger.warning(
+                "PIPELINE | staff_manual_message_detected | contact=%s | applying stop-bot, aborting AI reply",
+                ctx.contact_id,
+            )
+            try:
+                await ctx.ghl.add_tag(ctx.contact_id, "stop-bot")
+            except Exception as e:
+                logger.warning("PIPELINE | add stop-bot tag failed | err=%s", e)
+            return {
+                "status": "skipped",
+                "reason": "staff_manual_message",
+                "contact_id": ctx.contact_id,
+            }
+
         await process_attachments(ctx)
 
         if ctx.attachments:
@@ -1350,6 +1365,44 @@ async def followup_pipeline(ctx: PipelineContext) -> dict[str, Any]:
     # Log full webhook response for debugging visibility
     logger.info("WEBHOOK RESPONSE | %s", json.dumps(result, default=str))
     return result
+
+
+async def _staff_manual_message_detected(ctx: PipelineContext) -> bool:
+    """Detect if staff manually messaged the contact AFTER the lead's reply.
+
+    GHL doesn't have a reliable trigger for staff-manual-replies (user_reply
+    type doesn't fire, conversation_sync_poller can be rate-limited). After
+    the conversation_sync runs, scan the chat history for any newer outbound
+    message with source='manual' (staff typed in GHL Conversations panel).
+    If found, the bot must pause — the human took over.
+
+    Returns True if a staff manual message was found newer than the lead's
+    reply we're processing.
+    """
+    if not ctx.chat_history:
+        return False
+
+    found_lead_reply = False
+    for row in ctx.chat_history:  # newest-first
+        role = row.get("role", "")
+        source = row.get("source", "")
+        # Walk newest → oldest. We're looking for: any "manual" outbound
+        # that appears AFTER the most recent human/lead_reply row.
+        if not found_lead_reply:
+            if role == "human" or source == "lead_reply":
+                found_lead_reply = True
+                continue
+            # Outbound row newer than the lead reply we triggered on
+            if source == "manual":
+                logger.info(
+                    "STAFF_MANUAL | detected newer manual outbound | content_preview=%s",
+                    (row.get("content") or "")[:80],
+                )
+                return True
+        else:
+            # Past the lead reply — anything before is older history, ignore
+            break
+    return False
 
 
 def _detect_inbound_from_sync(ctx: PipelineContext) -> None:
