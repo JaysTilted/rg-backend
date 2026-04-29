@@ -913,12 +913,26 @@ def _has_negative_signals(ctx: PipelineContext) -> bool:
 _PROGRESSION = ["contacted", "engaged", "qualified", "appointment_requested"]
 
 
+_TERMINAL_NEGATIVE_STAGES = {"not_interested", "wrong_number", "opt_out", "not_qualified"}
+
+
 def _deterministic_progression(
     ctx: PipelineContext,
     current_stage: str,
     qual_status: str,
 ) -> tuple[str, str]:
     """Determine highest applicable progression stage. Returns (stage, reason)."""
+    # Audit-fix 2026-04-29: don't auto-promote out of negative terminal stages.
+    # Exterior Illuminations bug: lead at not_interested said "Now it's fine"
+    # (no negative keyword match), fell through to default "engaged" promotion.
+    # _PROGRESSION's backward-guard only protects forward stages, not terminals.
+    # If the lead is currently in a negative terminal, requires an explicit DNC
+    # tag check upstream (replied-not-interested, etc.) before we'd consider
+    # reactivating — and that's the auto-reengage path in ensure_opportunity,
+    # not this default progression.
+    if current_stage in _TERMINAL_NEGATIVE_STAGES:
+        return "no_change", f"At terminal negative stage {current_stage}; reply doesn't auto-reactivate"
+
     has_qual = bool((ctx.compiled.get("_matched_setter") or {}).get("services"))
     slots_called = any(
         t.get("name") == "get_available_slots" for t in (ctx.tool_calls_log or [])
