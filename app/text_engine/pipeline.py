@@ -990,6 +990,22 @@ async def reply_pipeline(ctx: PipelineContext) -> dict[str, Any]:
     await load_data(ctx)
     _cache_derived_values(ctx)
 
+    # Step 3.2b: Client-skip gate. Paying clients (closed-won) and any contact
+    # already in a non-sales pipeline stage are handled by humans — the AI
+    # setter must not reply on those threads. Discovered 2026-04-29 (Isaac
+    # Zidar): AI was hallucinating commitments to a closed-won client mid-
+    # operational support conversation.
+    if not ctx.is_test_mode and _is_client_or_terminal(ctx):
+        logger.warning(
+            "PIPELINE | client_skip | contact=%s | tags=%s | reason=closed-won/non-sales-stage; AI must not reply",
+            ctx.contact_id, ctx.contact_tags,
+        )
+        return {
+            "status": "skipped",
+            "reason": "client_or_terminal_stage",
+            "contact_id": ctx.contact_id,
+        }
+
     # Step 3.3–3.5: Conversation sync, storage, and timeline
     if ctx.is_test_mode:
         # Test mode (simulator/sandbox):
@@ -1378,6 +1394,38 @@ async def followup_pipeline(ctx: PipelineContext) -> dict[str, Any]:
     # Log full webhook response for debugging visibility
     logger.info("WEBHOOK RESPONSE | %s", json.dumps(result, default=str))
     return result
+
+
+_CLIENT_TAGS = {"closed-won", "closed_won", "client", "active-client", "active_client", "paying-client", "paying_client"}
+_NON_SALES_PIPELINE_STAGES = {
+    # Sales Pipeline terminal stages
+    "closed_won", "closed_lost", "long_term_nurture", "long-term_nurture",
+    "no_show", "cancelled_reschedule", "cancelled-reschedule", "pending_close",
+    # Onboarding/Fulfillment Pipeline (clients only)
+    "onboarding_form_sent", "onboarding-form-sent", "form_received", "form-received",
+    "build_in_progress", "build-in-progress", "gmb_a2p_issue", "gmb-a2p-issue",
+    "launch_call_booked", "launch-call-booked", "active", "card_declined",
+    "card-declined", "churned",
+}
+
+
+def _is_client_or_terminal(ctx: PipelineContext) -> bool:
+    """Return True if the contact is a client or in a non-sales pipeline stage.
+
+    Triggers when:
+    1. Any tag indicates client/closed-won status
+    2. The contact's current pipeline stage is not in active sales progression
+
+    When True, the AI setter pipeline must exit immediately without replying.
+    Humans are handling these threads (operational support, onboarding, etc.).
+    """
+    tags_lower = {(t or "").strip().lower() for t in (ctx.contact_tags or [])}
+    if _CLIENT_TAGS & tags_lower:
+        return True
+    stage = (ctx.current_pipeline_stage or "").strip().lower()
+    if stage and stage in _NON_SALES_PIPELINE_STAGES:
+        return True
+    return False
 
 
 async def _staff_manual_message_detected(ctx: PipelineContext) -> bool:
