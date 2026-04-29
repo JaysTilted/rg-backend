@@ -302,7 +302,7 @@ async def _split_response(ctx: PipelineContext, bp_sections: dict | None = None)
             prompt=f"<InputMessage>\n{ctx.agent_response}\n</InputMessage>\n\nSplit this message following the rules.",
             schema=_SPLIT_SCHEMA,
             system_prompt=split_prompt,
-            model="google/gemini-2.5-flash",
+            model="openai/gpt-4.1",
             temperature=resolve_temperature(ctx, "message_splitter"),
             label="message_splitting",
         )
@@ -386,7 +386,7 @@ async def split_message_standalone(
             prompt=f"<InputMessage>\n{message}\n</InputMessage>\n\nSplit this message following the rules.",
             schema=_SPLIT_SCHEMA,
             system_prompt=split_prompt,
-            model="google/gemini-2.5-flash",
+            model="openai/gpt-4.1",
             temperature=temperature,
             label="message_splitting",
         )

@@ -207,7 +207,7 @@ async def _reanalyze_link(
                 },
                 "required": ["answer"],
             },
-            model="google/gemini-2.5-flash",
+            model="openai/gpt-4.1",
             temperature=0.3,
             system_prompt=(
                 "<role>\n"

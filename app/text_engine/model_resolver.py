@@ -21,47 +21,50 @@ logger = logging.getLogger(__name__)
 # ── Hardcoded fallback — full OpenRouter model IDs ──
 
 CALL_DEFAULTS: dict[str, str] = {
+    # All defaults route to openai/gpt-4.1 — the only model deployed on
+    # ironclaw.openai.azure.com (Azure free tier). Any non-gpt-4.1 model
+    # falls through to OpenRouter, which is not funded.
     # Text Engine — Reply
     "reply_agent": "openai/gpt-4.1",
-    "reply_media": "openai/gpt-4.1-mini",
-    "transfer_detection": "openai/gpt-4.1-mini",
-    "response_determination": "openai/gpt-4.1-mini",
-    "contact_extraction": "openai/gpt-4.1-mini",
-    "stop_detection": "openai/gpt-4.1-mini",
-    "pipeline_management": "openai/gpt-4.1-mini",
-    "reply_security": "openai/gpt-4.1-mini",
-    "qualification": "openai/gpt-4.1-mini",
-    "email_formatting": "openai/gpt-4.1-mini",
-    "media_analysis": "google/gemini-3.1-pro-preview",
-    "link_synthesis": "openai/gpt-4.1-mini",
-    "call_summarization": "openai/gpt-4.1-mini",
+    "reply_media": "openai/gpt-4.1",
+    "transfer_detection": "openai/gpt-4.1",
+    "response_determination": "openai/gpt-4.1",
+    "contact_extraction": "openai/gpt-4.1",
+    "stop_detection": "openai/gpt-4.1",
+    "pipeline_management": "openai/gpt-4.1",
+    "reply_security": "openai/gpt-4.1",
+    "qualification": "openai/gpt-4.1",
+    "email_formatting": "openai/gpt-4.1",
+    "media_analysis": "openai/gpt-4.1",
+    "link_synthesis": "openai/gpt-4.1",
+    "call_summarization": "openai/gpt-4.1",
 
     # Text Engine — Follow-up
     "followup_text": "openai/gpt-4.1",
     "followup_media": "openai/gpt-4.1",
-    "followup_determination": "openai/gpt-4.1-mini",
-    "smart_scheduler": "openai/gpt-4.1-mini",
-    "followup_security": "openai/gpt-4.1-mini",
-    "followup_email_formatting": "openai/gpt-4.1-mini",
+    "followup_determination": "openai/gpt-4.1",
+    "smart_scheduler": "openai/gpt-4.1",
+    "followup_security": "openai/gpt-4.1",
+    "followup_email_formatting": "openai/gpt-4.1",
 
     # Missed Call Text-Back
-    "missed_call_text": "openai/gpt-4.1-mini",
-    "missed_call_gate": "openai/gpt-4.1-mini",
+    "missed_call_text": "openai/gpt-4.1",
+    "missed_call_gate": "openai/gpt-4.1",
 
     # Reactivation
-    "reactivation_sms": "openai/gpt-4.1-mini",
+    "reactivation_sms": "openai/gpt-4.1",
     "reactivation_p1_only": "openai/gpt-4.1",
-    "reactivation_qual": "openai/gpt-4.1-mini",
-    "service_matcher": "openai/gpt-4.1-mini",
-    "reactivation_security": "openai/gpt-4.1-mini",
-    "message_splitter": "openai/gpt-4.1-mini",
+    "reactivation_qual": "openai/gpt-4.1",
+    "service_matcher": "openai/gpt-4.1",
+    "reactivation_security": "openai/gpt-4.1",
+    "message_splitter": "openai/gpt-4.1",
 
     # Post-Appointment
-    "post_appointment_determination": "openai/gpt-4.1-mini",
+    "post_appointment_determination": "openai/gpt-4.1",
     "post_appointment_generation": "openai/gpt-4.1",
 
     # AI Data Chat
-    "data_chat": "openai/gpt-4.1-mini",
+    "data_chat": "openai/gpt-4.1",
 }
 
 # ── Hardcoded fallback — default temperatures ──

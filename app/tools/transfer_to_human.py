@@ -378,7 +378,7 @@ async def _classify_routing(reason: str, agent_type: str) -> dict[str, Any]:
             prompt=f"Transfer reason: {reason}\nSource: {agent_type}",
             schema=_ROUTING_SCHEMA,
             system_prompt=_ROUTING_SYSTEM_PROMPT,
-            model="google/gemini-2.5-flash",
+            model="openai/gpt-4.1",
             temperature=0.1,
             label="transfer_routing",
         )
