@@ -922,6 +922,13 @@ async def ensure_opportunity(ctx: PipelineContext) -> None:
         #   * the classifier_gate didn't say stop_bot
         # which matches our "reply intent must be positive, not just any
         # text" semantics. WeatherTite / Chris Blake was the trigger bug.
+        #
+        # Audit-fix 2026-04-29: ctx.contact_tags is loaded from the webhook
+        # payload at trigger time, BEFORE iron-sms classifier has added
+        # `replied-not-interested`. By the time we hit this check (after
+        # 90s+ debounce), the GHL tag exists but our cache is stale.
+        # Northcali Llc bug: opp moved Not Interested → Engaged 27s after
+        # creation. Fix: re-fetch live tags right before the decision.
         negative_stages = {"opt_out", "not_interested", "wrong_number", "not_qualified"}
         if ctx.current_pipeline_stage in negative_stages:
             dnc_tags = {
@@ -930,8 +937,14 @@ async def ensure_opportunity(ctx: PipelineContext) -> None:
                 "tcpa-risk", "tcpa_risk", "tcpa-threat",
                 "replied-do-not-contact", "replied-not-interested",
             }
+            try:
+                fresh = await ghl.get_contact(ctx.contact_id)
+                live_tags = (fresh.get("contact") or fresh).get("tags", []) or []
+            except Exception as e:
+                logger.warning("auto_reengage: fresh-tag fetch failed (%s); using cached", e)
+                live_tags = ctx.contact_tags or []
             contact_tags_lower = {
-                (t or "").strip().lower() for t in (ctx.contact_tags or [])
+                (t or "").strip().lower() for t in live_tags
             }
             has_dnc_tag = bool(dnc_tags & contact_tags_lower)
             gates = ctx.classification_gates or []
