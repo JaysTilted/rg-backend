@@ -1048,10 +1048,14 @@ async def _manage_pipeline(
         current_stage, qual_status, has_qual, bool(opp_id),
     )
 
-    # Terminal — already booked
-    if current_stage == "booked":
+    # Terminal — already booked OR a paying-client stage. closed_won, active,
+    # and churned are post-sale states; auto-classifier must NOT touch them
+    # because the LLM has no context that "this is our customer, not a lead."
+    # Causes Arbuckle/IN-Electric-style regressions where Closed Won opps
+    # bounce to Engaged/Booked on every customer reply.
+    if current_stage in ("booked", "closed_won", "active", "churned"):
         result["action"] = "no_change"
-        result["reason"] = "Already booked"
+        result["reason"] = f"Terminal stage protected: {current_stage}"
         return result
 
     # --- Priority 1: booked (safety net — ensure_opportunity handles this too) ---
