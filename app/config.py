@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     database_chat_url: str = ""
 
     # AI
+    # Global provider preference. "azure" routes Azure-deployed models to Azure
+    # before falling back to OpenRouter. "openrouter" skips Azure entirely and
+    # uses OpenRouter as the primary path. Set via PREFER_PROVIDER env var.
+    prefer_provider: str = "azure"        # "azure" | "openrouter"
     openrouter_api_key: str = ""          # All production traffic (clients + personal bots + workflows)
     openrouter_testing_key: str = ""      # Test runner only
     azure_openai_api_key: str = ""

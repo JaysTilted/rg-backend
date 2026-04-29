@@ -144,11 +144,19 @@ def _get_direct_model_id(model: str) -> str | None:
 def _should_prefer_azure(model: str) -> bool:
     """Whether this model should execute against Azure before any fallback path.
 
-    Only routes to Azure when the resolved model matches a model actually
-    DEPLOYED on the Azure resource. On ironclaw.openai.azure.com only
-    `gpt-4.1` is deployed; routing anything else (mini/nano variants, 4o,
-    5.4) wastes ~8s per call in 404 retries before falling back.
+    Only routes to Azure when:
+    1. settings.prefer_provider == "azure" (global preference flag), AND
+    2. The resolved model matches a model actually DEPLOYED on the Azure
+       resource. On ironclaw.openai.azure.com only `gpt-4.1` is deployed;
+       routing anything else (mini/nano variants, 4o, 5.4) wastes ~8s per
+       call in 404 retries before falling back.
+
+    Set PREFER_PROVIDER=openrouter to skip Azure entirely and use OpenRouter
+    as the primary path (useful when Azure is down or for models OR has but
+    Azure does not, e.g. Claude, Gemini, Llama, Grok).
     """
+    if settings.prefer_provider.lower() != "azure":
+        return False
     if not settings.azure_openai_api_key:
         return False
     deployed = settings.azure_openai_model
@@ -170,7 +178,10 @@ async def _azure_chat_completion(
 ) -> openai.types.chat.ChatCompletion:
     """Call Azure OpenAI's v1 chat completions endpoint and parse to OpenAI types."""
     model_id = _get_direct_model_id(model) or model
-    url = settings.azure_openai_base_url.rstrip("/") + "/chat/completions"
+    # Azure's v1 OpenAI-compatible endpoint requires ?api-version=preview to
+    # enable structured outputs (response_format: json_schema). Without it,
+    # any classify-style call returns 400 Bad Request.
+    url = settings.azure_openai_base_url.rstrip("/") + "/chat/completions?api-version=preview"
     payload: dict[str, Any] = {
         "model": model_id,
         "messages": messages,
