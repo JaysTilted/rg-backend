@@ -359,7 +359,8 @@ async def _execute_booking_length_action(entity: dict[str, Any], payload: dict[s
     for calendar in calendars:
         if not isinstance(calendar, dict):
             continue
-        if target_calendar_id and calendar.get("id") != target_calendar_id:
+        cal_id = calendar.get("calendar_id") or calendar.get("id")
+        if target_calendar_id and cal_id != target_calendar_id:
             continue
         calendar["appointment_length_minutes"] = minutes
         updated = True

@@ -1112,7 +1112,13 @@ def _build_tool_kwargs(ctx: PipelineContext) -> dict[str, Any]:
         "qualification_notes": ctx.qualification_notes,
     }
     if len(calendar_ids) == 1:
-        kwargs["calendar_id"] = calendar_ids[0].get("id", "") if isinstance(calendar_ids[0], dict) else str(calendar_ids[0])
+        cal0 = calendar_ids[0]
+        if isinstance(cal0, dict):
+            cal0_id = cal0.get("calendar_id", "") or cal0.get("id", "")
+        else:
+            cal0_id = str(cal0)
+        if cal0_id:
+            kwargs["calendar_id"] = cal0_id
     return kwargs
 
 

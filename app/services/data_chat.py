@@ -1063,7 +1063,7 @@ def _heuristic_proposed_action(
         if isinstance(calendars, list) and calendars:
             first = calendars[0] or {}
             if isinstance(first, dict):
-                calendar_id = first.get("id") or ""
+                calendar_id = first.get("calendar_id") or first.get("id") or ""
                 calendar_name = first.get("name") or calendar_name
         if match:
             minutes = int(match.group(1))

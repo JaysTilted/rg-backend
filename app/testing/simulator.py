@@ -852,7 +852,7 @@ def _plan_to_scenario(
         _booking = _setter.get("booking", {})
         _cals = [c for c in _booking.get("calendars", []) if isinstance(c, dict) and c.get("enabled", True)]
         cal_name = _cals[0].get("name", "Appointment") if _cals else "Appointment"
-        cal_id = _cals[0].get("id", "") if _cals else ""
+        cal_id = (_cals[0].get("calendar_id", "") or _cals[0].get("id", "")) if _cals else ""
 
         context.appointments = [AppointmentConfig(
             calendar_id=cal_id,

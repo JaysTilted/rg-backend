@@ -406,11 +406,11 @@ async def _setup_appointments(
             cal_ids = [c for c in _booking.get("calendars", []) if isinstance(c, dict) and c.get("enabled", True)]
             for cal in cal_ids:
                 if cal.get("name") == calendar_name:
-                    calendar_id = cal.get("id", calendar_id)
+                    calendar_id = cal.get("calendar_id") or cal.get("id") or calendar_id
                     break
             else:
                 if cal_ids and isinstance(cal_ids[0], dict):
-                    calendar_id = cal_ids[0].get("id", calendar_id)
+                    calendar_id = cal_ids[0].get("calendar_id") or cal_ids[0].get("id") or calendar_id
 
         # Inject into MockGHLClient
         mock_config.appointments.append({

@@ -796,7 +796,12 @@ def _evaluate_onboarding_check(
     if check_key == "has_business_phone":
         return bool(entity.get("business_phone"))
     if check_key == "has_calendar":
-        return any(isinstance(calendar, dict) and calendar.get("enabled", True) is not False and calendar.get("id") for calendar in calendars or [])
+        return any(
+            isinstance(calendar, dict)
+            and calendar.get("enabled", True) is not False
+            and (calendar.get("calendar_id") or calendar.get("id"))
+            for calendar in calendars or []
+        )
     if check_key == "has_bot_persona":
         return _count_enabled_bot_persona_sections(bot_persona) > 0
     if check_key == "has_services":

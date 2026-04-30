@@ -1044,7 +1044,12 @@ async def _generate_textback(
     # Add calendar_id if single calendar
     if len(calendar_ids) == 1:
         cal = calendar_ids[0]
-        tool_kwargs["calendar_id"] = cal.get("id", "") if isinstance(cal, dict) else str(cal)
+        if isinstance(cal, dict):
+            cal_id_value = cal.get("calendar_id", "") or cal.get("id", "")
+        else:
+            cal_id_value = str(cal)
+        if cal_id_value:
+            tool_kwargs["calendar_id"] = cal_id_value
 
     # Build dynamic tool list from config
     tools = _build_mc_tools(mc_config)

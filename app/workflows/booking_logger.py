@@ -61,7 +61,8 @@ def _configured_calendar_length_minutes(
         for cal in calendars:
             if not isinstance(cal, dict):
                 continue
-            if calendar_id and cal.get("id") == calendar_id:
+            cal_id = cal.get("calendar_id") or cal.get("id")
+            if calendar_id and cal_id == calendar_id:
                 value = cal.get("appointment_length_minutes")
                 return int(value) if value not in (None, "") else None
             if calendar_name and cal.get("name") == calendar_name:

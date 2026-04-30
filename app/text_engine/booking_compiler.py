@@ -56,7 +56,7 @@ def compile_booking_config(
             appt_len = cal.get("appointment_length_minutes")
             entry: dict[str, Any] = {
                 "name": cal.get("name", ""),
-                "id": cal.get("id", ""),
+                "calendar_id": cal.get("calendar_id", "") or cal.get("id", ""),
                 "booking_window": f"{window} days",
             }
             if appt_len:
@@ -74,7 +74,7 @@ def compile_booking_config(
     cal_link_lines = []
     for cal in link_cals:
         name = cal.get("name", "Booking")
-        cal_id = cal.get("id", "")
+        cal_id = cal.get("calendar_id", "") or cal.get("id", "")
         link = cal.get("booking_link_override") or (f"https://api.leadconnectorhq.com/widget/booking/{cal_id}" if cal_id else "")
         desc = cal.get("description", "")
         window = cal.get("booking_window_days", default_window)
