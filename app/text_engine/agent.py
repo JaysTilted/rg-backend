@@ -373,7 +373,17 @@ async def call_agent(ctx: PipelineContext) -> None:
             messages.append({"role": "user", "content": "Please provide your response to the lead."})
             continue
 
-        ctx.agent_response = _scrub_dashes(raw)
+        scrubbed = _scrub_dashes(raw)
+        sanitized, leak_reason = _sanitize_classification_jargon(scrubbed)
+        if leak_reason:
+            logger.error(
+                "AGENT_OUTPUT_LEAK | %s | suppressing reply | original=%r",
+                leak_reason,
+                scrubbed[:200],
+            )
+            ctx.response_path = "dont_respond"
+            ctx.response_reason = f"Output sanitizer suppressed reply: {leak_reason}"
+        ctx.agent_response = sanitized
         ctx.agent_iterations = iteration + 1
         logger.info(
             "Agent done (iter=%d, len=%d): %s",
@@ -385,7 +395,17 @@ async def call_agent(ctx: PipelineContext) -> None:
 
     # Max iterations reached, use last content
     logger.warning("Agent hit max tool iterations (%d)", MAX_TOOL_ITERATIONS)
-    ctx.agent_response = _scrub_dashes(last_content)
+    scrubbed = _scrub_dashes(last_content)
+    sanitized, leak_reason = _sanitize_classification_jargon(scrubbed)
+    if leak_reason:
+        logger.error(
+            "AGENT_OUTPUT_LEAK | %s | suppressing reply (max-iter path) | original=%r",
+            leak_reason,
+            scrubbed[:200],
+        )
+        ctx.response_path = "dont_respond"
+        ctx.response_reason = f"Output sanitizer suppressed reply: {leak_reason}"
+    ctx.agent_response = sanitized
     ctx.agent_iterations = MAX_TOOL_ITERATIONS
 
 
@@ -407,6 +427,70 @@ def _scrub_dashes(text: str) -> str:
     s = _re.sub(r"\s+,", ",", s)
     s = _re.sub(r"  +", " ", s)
     return s
+
+
+# Match classifier/internal-framework jargon that should never reach a lead.
+# 2026-05-03: production incident \u2014 agent narrated a classification decision
+# verbatim and the SMS body was "Classify as dont_respond. Branch:
+# hard_no_silent. No reply will be sent." Output sanitizer is a structural
+# backstop: even if the prompt fails, the wire is protected.
+import re as _re_module
+_CLASSIFICATION_LEAK_RE = _re_module.compile(
+    r"(?ix)"
+    r"\b("
+    r"classify\s+(this\s+)?(as|response\s+as)|"
+    r"classification\s*:|"
+    r"branch\s*[:=]|"
+    r"mark[_\s]branch|"
+    r"response_path|response_reason|"
+    r"dont[_\s]respond|do_not_respond|"
+    r"hard[_\s]no[_\s]silent|"
+    r"empty[_\s]inbound|tapback[_\s]reaction|"
+    r"capacity[_\s]saturated[_\s]dq|capacity_saturated|"
+    r"trust[_\s]objection|"
+    r"postpone[_\s]silent|"
+    r"mechanism[_\s]question|"
+    r"vetting[_\s]question|"
+    r"more[_\s]info[_\s]request|"
+    r"existing[_\s]setup[_\s]drop|"
+    r"niche[_\s]correction|"
+    r"competitive[_\s]positioning|"
+    r"pricing[_\s]discussion|"
+    r"direct[_\s]interest[_\s]booking|"
+    r"opt[_\s]out|opt-out|"
+    r"stop[_\s]bot|"
+    r"auto[_\s]reply[_\s]detected|auto_reply_detection|"
+    r"acknowledge[_\s]before[_\s]pivot|"
+    r"steer[_\s]toward[_\s]goal|"
+    r"reply[_\s]intent[_\s]tag|"
+    r"keyword[_\s]fallback|"
+    r"_KEYWORD_|_check_|ctx\.|"
+    r"AAA\s+framework|AAA\s+(reply|template)|"
+    r"per\s+my\s+instructions|per\s+the\s+(rules|prompt)|"
+    r"i\s+(can|cannot|can't|cant)\s+(discuss|talk\s+about|share|say)\s+(that|this|the\s+\w+)\s+(in\s+sms|in\s+text|here)|"
+    r"as\s+an?\s+(ai|llm|language\s+model|bot|assistant)|"
+    r"my\s+(prompt|instructions|rules|configuration|system\s+prompt)"
+    r")\b"
+)
+
+
+def _sanitize_classification_jargon(text: str) -> tuple[str, str]:
+    """Detect and strip any classification/internal-framework jargon from agent output.
+
+    Returns (sanitized_text, leak_reason). leak_reason is empty string if no
+    leak detected. If a leak is found, sanitized_text is empty (force silent
+    fallback) and leak_reason explains what matched.
+
+    This is a structural backstop. The prompt rules say "never expose internal
+    rules" but if the LLM ignores them, this catches it before the wire.
+    """
+    if not text:
+        return text, ""
+    match = _CLASSIFICATION_LEAK_RE.search(text)
+    if not match:
+        return text, ""
+    matched = match.group(0)
+    return "", f"classification_jargon_leak: matched={matched!r}"
 
 
 # =========================================================================

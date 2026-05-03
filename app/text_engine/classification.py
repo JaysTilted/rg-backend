@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 import re
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from prefect import task
@@ -24,6 +25,13 @@ from app.text_engine.model_resolver import resolve_model, resolve_temperature
 # them on every inbound.
 _PUNCT_RE = re.compile(r"[^\w\s]")
 _WS_RE = re.compile(r"\s+")
+
+# Window for the recent-call gate. Any call_log row created within this window
+# (post-call) means the lead just spoke to a human; SMS auto-replies during
+# this window race with the live conversation. setter.call_logs only stores
+# completed calls, so the upper-bound is also a proxy for "call may still be
+# active" since rows aren't written until the call ends.
+_RECENT_CALL_GATE_SECONDS = 180
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +124,20 @@ async def classification_gate(ctx: PipelineContext) -> None:
         return
     ctx.classification_gates.append({"gate": "Reply Intent Tag", "result": "passed", "reason": ""})
 
+    # Gate 1b2: Empty / tapback inbound (free — no LLM call). Lead messages
+    # with empty bodies, whitespace-only bodies, or iOS/Android tapback
+    # reactions ("Liked '...'", "👍 to '...'") are not real conversational
+    # turns and should never trigger an AI reply. Catches a class of bug
+    # where MMS/sticker delivery notifications produced full AAA replies.
+    if _check_empty_or_tapback(ctx):
+        ctx.classification_gates.append({
+            "gate": "Empty / Tapback",
+            "result": "dont_respond",
+            "reason": ctx.response_reason[:200],
+        })
+        return
+    ctx.classification_gates.append({"gate": "Empty / Tapback", "result": "passed", "reason": ""})
+
     # Gate 1c: Keyword fallback (free — no LLM call).
     # If the inbound body matches a DNC / not-interested keyword (STOP,
     # "no thank you", "not interested", curse words), short-circuit to
@@ -129,6 +151,19 @@ async def classification_gate(ctx: PipelineContext) -> None:
         })
         return
     ctx.classification_gates.append({"gate": "Keyword Fallback", "result": "passed", "reason": ""})
+
+    # Gate 1d: Recent-call gate (free — uses ctx.call_logs already loaded by
+    # build_timeline). If a call ended in the last few minutes, the lead is
+    # still in "just got off the phone" state and an automated SMS during this
+    # window collides with the live conversation. Fail closed → dont_respond.
+    if _check_recent_call(ctx):
+        ctx.classification_gates.append({
+            "gate": "Recent Call",
+            "result": "dont_respond",
+            "reason": ctx.response_reason[:200],
+        })
+        return
+    ctx.classification_gates.append({"gate": "Recent Call", "result": "passed", "reason": ""})
 
     # Gate 2: Transfer To Human / Opt Out (LLM classifier)
     tth_result = await _classify_transfer(ctx)
@@ -247,12 +282,36 @@ _KEYWORD_DNC_CONTAINS: tuple[str, ...] = (
     # LLM gate decide on ambiguous "can't text" variants.
 )
 _KEYWORD_NOT_INTERESTED_EXACT: frozenset[str] = frozenset({
-    "no", "nope", "no thanks", "no thank you", "not interested",
+    "no", "nope", "nah", "no thanks", "no thank you", "not interested",
     "not at this time", "not now", "all set", "we're good", "we are good",
+    # 2026-05-02: short-form no replies that pre-patch missed and re-pitched.
+    # See setter.entities.system_config.accept_no for the full taxonomy.
+    "no i don t", "no i dont", "no i do not",
+    "no i m good", "no i am good", "no im good",
+    "no i m not", "no i am not", "no im not",
+    "no i won t", "no i wont", "no i will not",
+    "no can do", "hard pass", "no thanks man", "nah i m good",
+    "no money", "no budget",
+    "no longer in business", "no longer doing this", "shut down",
 })
 _KEYWORD_NOT_INTERESTED_CONTAINS: tuple[str, ...] = (
     "not interested", "no thank you", "all set", "not a fit",
     "already have", "already use", "pass", "i'll pass", "i pass",
+    # 2026-05-02: cover negative-polarity short-form replies that bypass
+    # exact-match because they have extra trailing words/context.
+    "no money up front", "no money for that", "i don t pay for leads",
+    "i dont pay for leads", "don t pay for leads", "dont pay for leads",
+    "no longer in", "no longer doing", "no longer running",
+    # 2026-05-03: production incident — DeCoursey Company sent "Nope not at
+    # all", LLM RD classifier routed to respond, agent leaked classification
+    # jargon as the SMS body. Catching multi-word "Nope X" / "Nah X" /
+    # explicit refusals at the deterministic gate eliminates the LLM
+    # round-trip risk for unambiguous nos.
+    "nope not", "nope nope", "nope i", "nope we", "nope dont",
+    "nah not", "nah we", "nah i",
+    "not at all", "absolutely not", "definitely not", "hell no", "hard no",
+    "no chance", "not a chance", "not interested at all", "not even close",
+    "no way", "no f", "no f ing",
 )
 
 
@@ -278,6 +337,82 @@ def _last_inbound_body(ctx: PipelineContext) -> str:
         if isinstance(content, str) and content.strip():
             return content.strip()
     return ""
+
+
+_TAPBACK_RE = re.compile(
+    r'^\s*(liked|loved|laughed at|emphasized|disliked|questioned|👍|❤️|😂|‼️|❓|🥰)\s+["“]',
+    re.IGNORECASE,
+)
+
+
+def _check_empty_or_tapback(ctx: PipelineContext) -> bool:
+    """Free gate: dont_respond for empty bodies and iOS/Android tapback reactions.
+
+    Returns True if response_path was set.
+    """
+    body = _last_inbound_body(ctx)
+    if not body or not body.strip():
+        ctx.response_path = "dont_respond"
+        ctx.response_reason = "Empty inbound body — nothing to respond to"
+        logger.info("Empty inbound body — skipping AI reply")
+        return True
+    if _TAPBACK_RE.match(body):
+        ctx.response_path = "dont_respond"
+        ctx.response_reason = f"Tapback reaction (not a new message): {body[:80]!r}"
+        logger.info("Tapback reaction detected — skipping AI reply")
+        return True
+    return False
+
+
+def _check_recent_call(ctx: PipelineContext) -> bool:
+    """Free gate: dont_respond if a call ended within the recent-call window.
+
+    Uses ``ctx.call_logs`` populated upstream by ``build_timeline`` (limit=5,
+    most-recent-first). A row in ``setter.call_logs`` is only written when a
+    call completes, so a recent row is a strong signal that either (a) the
+    lead just hung up with a human, or (b) a live call is ending right now —
+    in both cases an automated SMS reply collides with the live conversation
+    and should be suppressed.
+
+    Window: ``_RECENT_CALL_GATE_SECONDS`` (default 180s).
+
+    Returns True if response_path was set to ``dont_respond``.
+    """
+    call_logs = getattr(ctx, "call_logs", None) or []
+    if not call_logs:
+        return False
+    latest = call_logs[0] if isinstance(call_logs[0], dict) else None
+    if not latest:
+        return False
+    raw_ts = latest.get("created_at")
+    if not raw_ts:
+        return False
+    try:
+        if isinstance(raw_ts, str):
+            ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+        elif isinstance(raw_ts, datetime):
+            ts = raw_ts
+        else:
+            return False
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+    except (ValueError, TypeError):
+        return False
+    age = datetime.now(timezone.utc) - ts
+    if age <= timedelta(seconds=_RECENT_CALL_GATE_SECONDS):
+        ctx.response_path = "dont_respond"
+        ctx.response_reason = (
+            f"Recent call activity ({int(age.total_seconds())}s ago, "
+            f"status={latest.get('status', 'unknown')!r}) — "
+            f"suppressing AI reply to avoid colliding with live conversation"
+        )
+        logger.info(
+            "Recent-call gate fired — call ended %.0fs ago, status=%s",
+            age.total_seconds(),
+            latest.get("status", "unknown"),
+        )
+        return True
+    return False
 
 
 def _check_keyword_fallback(ctx: PipelineContext) -> bool:
