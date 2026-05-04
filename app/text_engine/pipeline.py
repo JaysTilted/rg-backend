@@ -210,10 +210,39 @@ async def text_engine(ctx: PipelineContext) -> dict[str, Any]:
 async def run_pipeline_with_tracking(ctx: PipelineContext) -> dict[str, Any]:
     """Run reply or follow-up pipeline with full WorkflowTracker enrichment.
 
-    Used by direct_runner.py for test/simulation mode. Does NOT use Prefect flow.
-    Same tracker logic as text_engine() but without the @flow decorator.
+    Used by direct_runner.py for test/simulation mode AND by the scheduled
+    follow-up path in message_scheduler_loop.py (which intentionally bypasses
+    Prefect's flow engine to avoid the cached-client-after-close error). Same
+    tracker logic as ``text_engine()`` but without the @flow decorator.
+
+    2026-05-04 fix: this function previously skipped the GHL client and AI
+    context setup that ``text_engine()`` does, causing followups dispatched
+    by the scheduler to hit `ctx.ghl is None` →
+    "'NoneType' object has no attribute 'get_contact'" on every run. Now
+    mirrors the same setup as the @flow path.
     """
     from app.models import TokenUsage
+
+    # Refresh default AI models cache (no-op when fresh)
+    from app.text_engine.model_resolver import refresh_defaults_if_stale
+    await refresh_defaults_if_stale()
+
+    # Create shared GHL client once for the entire pipeline. This was the
+    # missing piece — the followup path was running with ctx.ghl == None and
+    # crashing the moment any downstream code tried to use it.
+    ctx.ghl = GHLClient(api_key=ctx.ghl_api_key, location_id=ctx.ghl_location_id)
+
+    # Set per-request AI context (API keys + token tracker) for nested calls
+    tenant_keys = ctx.tenant_ai_keys or {}
+    set_ai_context(
+        api_key=ctx.openrouter_api_key,
+        token_tracker=ctx.token_usage,
+        google_key=tenant_keys.get("google", ""),
+        openai_key=tenant_keys.get("openai", ""),
+        deepseek_key=tenant_keys.get("deepseek", ""),
+        xai_key=tenant_keys.get("xai", ""),
+        anthropic_key=tenant_keys.get("anthropic", ""),
+    )
 
     ctx.pipeline_start_time = time.perf_counter()
 
@@ -282,6 +311,9 @@ async def run_pipeline_with_tracking(ctx: PipelineContext) -> dict[str, Any]:
         raise
     finally:
         await tracker.save()
+        # Mirror text_engine's cleanup so AI context doesn't leak between
+        # scheduler-loop runs of different tenants.
+        clear_ai_context()
 
 
 def _serialize_delivery_results(results: Any) -> Any:
