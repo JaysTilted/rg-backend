@@ -43,6 +43,7 @@ from app.api.ghl_proxy import router as ghl_proxy_router
 from app.routers.data_chat import data_chat_router
 from app.marketplace.oauth import router as marketplace_oauth_router
 from app.marketplace.setup_api import router as marketplace_setup_router
+from app.marketplace.internal_api import router as marketplace_internal_router
 
 # Configure structured JSON logging before anything else
 setup_logging()
@@ -262,6 +263,7 @@ app.include_router(ghl_proxy_router)
 app.include_router(data_chat_router)
 app.include_router(marketplace_oauth_router)
 app.include_router(marketplace_setup_router)
+app.include_router(marketplace_internal_router)
 
 
 @app.exception_handler(MissingTenantAIKeyError)

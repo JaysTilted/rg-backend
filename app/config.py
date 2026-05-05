@@ -55,6 +55,12 @@ class Settings(BaseSettings):
     # Auth
     api_auth_token: str = ""
 
+    # Internal cross-product API (Trilogy registry — Phase 1.F1)
+    # Set to a strong random secret. Same value lives in iron-bridge and
+    # automation-platform so each app can call /api/internal/* on the others.
+    # When empty, /api/internal endpoints fail closed (503).
+    internal_api_secret: str = ""
+
     # Portal auth
     portal_jwt_secret: str = ""
     frontend_url: str = "https://app.ironautomations.com"
